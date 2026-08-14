@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# ====================================================================
+#  Open the guided menu in a terminal window.
+#
+#  Exists because `Terminal=true` in a .desktop file is no longer
+#  dependable. GNOME removed its built-in handling in favour of the
+#  xdg-terminal-exec specification, which many distributions do not
+#  ship a provider for — so the launcher silently does nothing: the
+#  program starts with no terminal attached, the menu has nowhere to
+#  draw, and the window never appears.
+#
+#  Launching a terminal explicitly and setting Terminal=false in the
+#  .desktop file is the reliable path.
+# ====================================================================
+
+set -u
+
+DIAG="${DIAG_BIN:-}"
+if [ -z "$DIAG" ]; then
+    echo "DIAG_BIN is not set. Reinstall with ./install-desktop-entry.sh" >&2
+    exit 1
+fi
+
+# Held open after the menu exits so a startup error is readable rather
+# than flashing past as the window closes.
+INNER="'$DIAG' menu; printf '\n  Press Enter to close. '; read -r _"
+
+# Ordered by likelihood on a desktop Linux install. x-terminal-emulator
+# comes first because it is the Debian/Ubuntu alternatives symlink and
+# therefore respects whatever the user actually chose.
+for term in x-terminal-emulator gnome-terminal ptyxis konsole xfce4-terminal \
+            mate-terminal tilix kitty alacritty foot xterm; do
+    command -v "$term" >/dev/null 2>&1 || continue
+
+    case "$term" in
+        gnome-terminal|mate-terminal|tilix)
+            exec "$term" -- bash -lc "$INNER" ;;
+        ptyxis)
+            exec "$term" -- bash -lc "$INNER" ;;
+        konsole|xfce4-terminal)
+            exec "$term" -e bash -lc "$INNER" ;;
+        kitty|alacritty|foot)
+            exec "$term" bash -lc "$INNER" ;;
+        *)
+            exec "$term" -e bash -lc "$INNER" ;;
+    esac
+done
+
+echo "No terminal emulator found. Run this instead:" >&2
+echo "    '$DIAG' menu" >&2
+exit 1

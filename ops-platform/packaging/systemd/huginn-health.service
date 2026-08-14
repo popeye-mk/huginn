@@ -1,0 +1,12 @@
+[Unit]
+Description=Huginn scheduled codebase-health check (structural guards + answer anchor)
+Documentation=file://%h/anora-ops/ops-platform/LONG-TERM.md
+
+[Service]
+Type=oneshot
+# %h expands to the user's home. The installer rewrites this line to the
+# real platform path, because the checkout is not always under ~.
+ExecStart=/bin/bash %h/anora-ops/ops-platform/packaging/systemd/huginn-health.sh
+# The benchmark takes a few seconds; give it room but kill a wedge.
+TimeoutStartSec=600
+Nice=15

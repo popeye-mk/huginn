@@ -1,0 +1,107 @@
+# Windows error-code decoder (spec §10).
+#
+# The most cryptic strings an end user will ever paste into a ticket are
+# a Windows Update failure code and a BSOD stop code. Both are pure
+# lookup data — no new engine, no collector required. A technician can
+# use `diag decode 0x80070005` with no snapshot at all.
+#
+# Every entry states what the code means and what to do next, in the
+# same voice as a KB finding. Codes are stored lowercase; the decoder
+# normalises input before matching, so 0X80070005 / 80070005 / with or
+# without the 0x prefix all resolve to the same entry.
+#
+# Accuracy note: these are the documented Microsoft meanings, not
+# guesses. Where a code has several plausible causes the entry says so
+# rather than picking one and sounding more certain than it is.
+
+windows_update:
+  - code: "0x80070005"
+    meaning: "Access denied."
+    cause: "Usually antivirus interference or a permissions problem on the update folders."
+    next_step: "Run SFC, then retry the update from a clean boot with third-party AV temporarily disabled."
+
+  - code: "0x8007000e"
+    meaning: "Out of memory."
+    cause: "The update ran out of RAM or disk while staging."
+    next_step: "Check free disk space first — Windows Update needs roughly 8GB free to stage a feature update."
+
+  - code: "0x80070070"
+    meaning: "Insufficient disk space."
+    cause: "Not enough room on the system volume to download and expand the update."
+    next_step: "Free space on C: (Disk Cleanup, then the Windows.old folder if present) and retry."
+
+  - code: "0x80240034"
+    meaning: "Update failed to download."
+    cause: "Usually a network interruption or a proxy/WSUS server rejecting the request."
+    next_step: "Check connectivity and, on a managed machine, whether WSUS is reachable and healthy."
+
+  - code: "0x800f0922"
+    meaning: "Update could not be installed."
+    cause: "Most often a System Reserved partition that is too small, or a VPN blocking the update servers."
+    next_step: "Disconnect any VPN and retry; if it persists, check the System Reserved partition has at least 500MB free."
+
+  - code: "0x80073712"
+    meaning: "A component store file is missing or corrupt."
+    cause: "The servicing stack cannot find files it needs."
+    next_step: "Run DISM /Online /Cleanup-Image /RestoreHealth, then SFC /scannow, then retry."
+
+  - code: "0x800705b4"
+    meaning: "Operation timed out."
+    cause: "The update service did not respond in time — often a slow disk or a stuck servicing operation."
+    next_step: "Reboot to clear any pending servicing operation, then retry once before investigating the disk."
+
+  - code: "0x80070652"
+    meaning: "Another installation is already in progress."
+    cause: "A previous install or update never finished."
+    next_step: "Reboot to let the pending operation complete, then retry."
+
+  - code: "0x80073d02"
+    meaning: "The package could not be installed because resources it modifies are currently in use."
+    cause: "An app package (Store/AppX component) is running while Windows tries to update it. Seen against MicrosoftWindows.Client.WebExperience — the Widgets/News component."
+    next_step: "Close the app if you can identify it, or simply reboot and let the update retry — this one usually clears itself on the next attempt."
+
+  - code: "0x80073cf9"
+    meaning: "Store app install or update failed."
+    cause: "Usually a corrupt package cache or a permissions problem in the WindowsApps folder."
+    next_step: "Run wsreset.exe, then retry. If it persists, re-register the package with Get-AppxPackage | Add-AppxPackage."
+
+bsod:
+  - code: "0x0000007e"
+    name: "SYSTEM_THREAD_EXCEPTION_NOT_HANDLED"
+    cause: "A driver threw an exception the system could not handle. The faulting driver is usually named in the minidump."
+    next_step: "Identify the faulting driver from the minidump and roll it back or update it — graphics and storage drivers are the usual suspects."
+
+  - code: "0x0000009f"
+    name: "DRIVER_POWER_STATE_FAILURE"
+    cause: "A driver did not complete a power-state transition (sleep/resume) in time."
+    next_step: "Update chipset, storage and network drivers; this one is very often a Wi-Fi or SSD driver misbehaving on resume."
+
+  - code: "0x00000050"
+    name: "PAGE_FAULT_IN_NONPAGED_AREA"
+    cause: "Invalid memory was referenced. Frequently failing RAM, sometimes a driver or antivirus filter."
+    next_step: "Run a memory test (MemTest86 or Windows Memory Diagnostic) before assuming a software cause."
+
+  - code: "0x0000003b"
+    name: "SYSTEM_SERVICE_EXCEPTION"
+    cause: "An exception while executing a system service routine, usually driver-related."
+    next_step: "Check the minidump for the faulting module; update that driver first."
+
+  - code: "0x000000d1"
+    name: "DRIVER_IRQL_NOT_LESS_OR_EQUAL"
+    cause: "A driver accessed pageable memory at too high an IRQL. Almost always a specific bad driver."
+    next_step: "The minidump names the driver — update or roll it back. Network drivers are a common cause."
+
+  - code: "0x0000007b"
+    name: "INACCESSIBLE_BOOT_DEVICE"
+    cause: "Windows cannot reach the boot volume — often a storage-controller mode change (AHCI/RAID) or a failing disk."
+    next_step: "Check the SATA/NVMe mode in firmware has not changed, then test the disk. This one is frequently hardware."
+
+  - code: "0x000000ef"
+    name: "CRITICAL_PROCESS_DIED"
+    cause: "A process Windows requires terminated unexpectedly. Often corrupt system files."
+    next_step: "Run SFC /scannow and DISM /RestoreHealth; if it repeats, check the disk for errors."
+
+  - code: "0x00000133"
+    name: "DPC_WATCHDOG_VIOLATION"
+    cause: "A DPC ran too long — classically an outdated SSD firmware or storage driver."
+    next_step: "Update SSD firmware and the storage controller driver; check for an old iaStor/storahci driver."

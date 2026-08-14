@@ -1,0 +1,13 @@
+[Unit]
+Description=Huginn scheduled triage (accumulates findings for recall)
+Documentation=file://%h/anora-ops/ops-platform/NEXT-CHAPTER.md
+
+[Service]
+Type=oneshot
+# %h expands to the user's home. The installer rewrites this line to the
+# real platform path, because the checkout is not always under ~.
+ExecStart=/bin/bash %h/anora-ops/ops-platform/packaging/systemd/huginn-triage.sh
+# One triage takes seconds; kill it if something wedges rather than
+# leaving a stuck scan holding the findings store.
+TimeoutStartSec=300
+Nice=10

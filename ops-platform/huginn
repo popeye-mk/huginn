@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Launch the native Huginn shell (A3) — the fork-free assistant.
+#
+#   ./huginn            start the native server on the loopback port
+#
+# This runs the native runtime/ shell (registry + router + grounded answers +
+# server), NOT the vendored fork. It is offered alongside the fork launcher,
+# not in place of it: the fork still hosts the verbs the native shell has not
+# ported yet (ingest, notes, …). Run this to try the native path; it binds
+# 127.0.0.1 and opens no other port.
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+PY="$HERE/.venv/bin/python"
+[ -x "$PY" ] || PY="$(command -v python3)"
+
+cd "$HERE"
+exec "$PY" -m runtime.app "$@"

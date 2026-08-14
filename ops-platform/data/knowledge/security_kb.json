@@ -1,0 +1,214 @@
+{
+  "schema_version": "0.1.0",
+  "name": "anora-ops-security-kb",
+  "description": "Attack-pattern context for the security signals the shipped engines actually emit. Every entry is keyed to a finding id or correlation id that exists in Diagnostic Companion or netdiag today. Nothing here is written against a signal we hope to collect later: an entry that can never be retrieved makes the knowledge base look richer than it is.",
+  "attribution": "ATT&CK technique ids reference the MITRE ATT&CK framework (https://attack.mitre.org/). The MAPPINGS are ours, not MITRE's, and are stated as our reading of their taxonomy rather than as anything MITRE published. ATT&CK is (c) The MITRE Corporation, used under its terms for non-commercial and commercial use with attribution.",
+  "entries": [
+    {
+      "id": "kb_llmnr_poisoning",
+      "title": "LLMNR/NBT-NS poisoning and SMB relay",
+      "technique": "T1557.001",
+      "applies_to": [
+        "hygiene_poisoning_surface",
+        "poisoning_surface_actively_reachable"
+      ],
+      "summary": "When a Windows machine cannot resolve a name through DNS, it falls back to broadcasting the query to the whole local segment over LLMNR and NBT-NS. Any host on that segment can answer. Tools in the Responder family answer every such query, and the asking machine then authenticates to the attacker, handing over an NTLMv2 hash that can be cracked offline or relayed onward to a service that does not require SMB signing.",
+      "why_it_matters": "This needs no exploit and no malware. It is the machine's own name-resolution behaviour being answered by the wrong party, which is why it survives on networks that are otherwise well patched.",
+      "preconditions": "LLMNR or NBT-NS enabled, attacker present on the same broadcast domain, and a name-resolution attempt that DNS does not satisfy.",
+      "remediation": "Disable LLMNR by Group Policy (Turn off multicast name resolution) and disable NetBIOS over TCP/IP on the adapter. Require SMB signing to break the relay leg.",
+      "keywords": [
+        "llmnr",
+        "nbt-ns",
+        "netbios",
+        "responder",
+        "name resolution",
+        "relay",
+        "ntlm",
+        "credential capture",
+        "broadcast",
+        "poisoning"
+      ]
+    },
+    {
+      "id": "kb_dns_failure_as_trigger",
+      "title": "DNS failure as the trigger for name-resolution fallback",
+      "technique": "T1557.001",
+      "applies_to": [
+        "dns_resolution_failure",
+        "dns_resolution_failing",
+        "poisoning_surface_actively_reachable"
+      ],
+      "summary": "A DNS outage is normally treated as an availability problem. On a Windows network it is also a security event, because failed DNS lookups are precisely what causes fallback to LLMNR and NBT-NS. A poisoning surface that is dormant while DNS works becomes live the moment DNS stops.",
+      "why_it_matters": "The two signals are usually held by different people: DNS by whoever handles connectivity, LLMNR by whoever handles hardening. Neither sees the combination, which is the combination that matters.",
+      "preconditions": "Name-resolution fallback enabled on the client, DNS not answering.",
+      "remediation": "Treat the DNS outage as urgent, and disable the fallback regardless of the outcome. The exposure is only harmless while name resolution works.",
+      "keywords": [
+        "dns",
+        "resolution",
+        "failure",
+        "fallback",
+        "outage",
+        "trigger",
+        "name query"
+      ]
+    },
+    {
+      "id": "kb_smb1",
+      "title": "SMBv1 enabled",
+      "technique": "T1210",
+      "applies_to": [
+        "hygiene_smb1_enabled"
+      ],
+      "summary": "SMBv1 is the protocol version targeted by EternalBlue (MS17-010), the vulnerability that carried WannaCry and NotPetya. It has been deprecated since 2014 and is not installed by default on current Windows, so its presence usually means an old dependency was kept alive deliberately or a machine was upgraded in place.",
+      "why_it_matters": "Worms using this vector spread without user interaction. One unpatched host with SMBv1 is a foothold for everything reachable from it.",
+      "preconditions": "SMBv1 client or server feature enabled.",
+      "remediation": "Remove the SMB1Protocol Windows feature. Identify what still needs it first — usually an old NAS, scanner or line-of-business appliance.",
+      "keywords": [
+        "smb1",
+        "smbv1",
+        "eternalblue",
+        "ms17-010",
+        "wannacry",
+        "notpetya",
+        "legacy protocol",
+        "worm"
+      ]
+    },
+    {
+      "id": "kb_rdp_without_nla",
+      "title": "RDP exposed without Network Level Authentication",
+      "technique": "T1021.001",
+      "applies_to": [
+        "hygiene_rdp_without_nla"
+      ],
+      "summary": "Without Network Level Authentication, RDP allocates a session before the user has authenticated. That makes the service reachable to unauthenticated clients, enlarges the pre-auth attack surface, and removes the cheapest defence against credential-stuffing and brute-force campaigns, which target RDP more than any other remote service.",
+      "why_it_matters": "RDP remains one of the most common initial-access vectors in ransomware incidents, and internet-exposed RDP is scanned continuously.",
+      "preconditions": "Remote Desktop enabled with NLA not required.",
+      "remediation": "Require NLA. Do not expose RDP directly to the internet — put it behind a VPN or a gateway, and enable account lockout.",
+      "keywords": [
+        "rdp",
+        "remote desktop",
+        "nla",
+        "network level authentication",
+        "brute force",
+        "credential stuffing",
+        "3389",
+        "ransomware initial access"
+      ]
+    },
+    {
+      "id": "kb_risky_listeners",
+      "title": "Unexpected listening services",
+      "technique": "T1046",
+      "applies_to": [
+        "hygiene_risky_listeners"
+      ],
+      "summary": "A service listening on an interface it does not need to be on is attack surface nobody chose. The common cases are benign in origin — a development server bound to 0.0.0.0 instead of loopback, a database left listening after a migration, a management agent installed with default settings — but each is reachable from the network and each authenticates weakly or not at all.",
+      "why_it_matters": "These are what an attacker already inside the network enumerates first, and they rarely appear in any inventory because nobody deliberately installed them as exposed services.",
+      "preconditions": "A process bound to a non-loopback address on a port not required by the machine's role.",
+      "remediation": "Rebind to loopback where the service is only used locally, or firewall the port. Confirm what the process is before closing it.",
+      "keywords": [
+        "listening",
+        "listener",
+        "open port",
+        "bind",
+        "0.0.0.0",
+        "exposed service",
+        "attack surface",
+        "enumeration"
+      ]
+    },
+    {
+      "id": "kb_captive_portal_aitm",
+      "title": "Captive portals and adversary-in-the-middle",
+      "technique": "T1557",
+      "applies_to": [
+        "captive_portal",
+        "dns_failure_explained_by_captive_portal"
+      ],
+      "summary": "A captive portal works by intercepting traffic and answering DNS for names it does not own — behaviour that is indistinguishable, from the client's side, from an attacker doing the same thing. It is usually exactly what it appears to be: a hotel or airport network wanting a click-through. It is worth knowing that the mechanism is the same one an interception attack uses.",
+      "why_it_matters": "The correct response is to sign in, not to change DNS settings. Reconfiguring resolvers because of a portal is a change made for the wrong reason that then persists.",
+      "preconditions": "Network with a captive portal, sign-in not yet completed.",
+      "remediation": "Complete the portal sign-in and re-check. Treat any certificate warning during that process as significant, not as noise.",
+      "keywords": [
+        "captive portal",
+        "hotspot",
+        "interception",
+        "adversary in the middle",
+        "aitm",
+        "hotel wifi",
+        "sign-in"
+      ]
+    },
+    {
+      "id": "kb_link_down_masks_everything",
+      "title": "A dead link explains every finding above it",
+      "technique": null,
+      "applies_to": [
+        "link_down",
+        "everything_downstream_of_dead_link"
+      ],
+      "summary": "When no network interface is up, every check that depends on the network fails as a consequence. Those failures carry no information about the things they appear to be measuring: DNS is not broken, the gateway is not unreachable, the ISP is not down. There is one fault and a cascade of symptoms.",
+      "why_it_matters": "Chasing the cascade is how an evening is lost. This entry is not an attack pattern — it is here because suppression is as much a part of correlation as escalation, and the knowledge base should be able to support that half too.",
+      "preconditions": "No interface in an up state.",
+      "remediation": "Restore the physical or Wi-Fi link first, then re-test. Treat every other network finding as unconfirmed until it comes back.",
+      "keywords": [
+        "link down",
+        "no carrier",
+        "interface down",
+        "cascade",
+        "downstream",
+        "cable",
+        "wifi off"
+      ]
+    },
+    {
+      "id": "kb_two_engines_agree",
+      "title": "Independent agreement between engines",
+      "technique": null,
+      "applies_to": [
+        "dns_failure_confirmed_by_both_engines"
+      ],
+      "summary": "Host diagnostics and network diagnostics collect independently, with different code and different methods. When both report the same fault, a transient measurement error becomes unlikely — the finding is one fault confirmed twice, not two faults.",
+      "why_it_matters": "Agreement raises confidence in the measurement. It does not raise severity: the problem is exactly as bad as it was, and correlation adds meaning rather than urgency.",
+      "preconditions": "Two or more engines reporting the same underlying condition on the same machine.",
+      "remediation": "Act on the finding itself. The agreement is a reason to stop doubting the measurement, not a separate problem.",
+      "keywords": [
+        "agreement",
+        "confirmation",
+        "two engines",
+        "independent",
+        "corroboration",
+        "cross-signal"
+      ]
+    },
+    {
+      "id": "kb_c2_beacon_with_load",
+      "title": "Host under load beaconing to command-and-control",
+      "technique": "T1071",
+      "applies_to": [
+        "threat_outbound_c2",
+        "compromise_pattern_load_and_c2",
+        "threat_outbound_payload",
+        "threat_outbound_flagged"
+      ],
+      "summary": "Compromised hosts contact a controller for instructions over ordinary protocols — HTTPS, DNS, HTTP — because that traffic blends into normal use and survives most firewall rules. On its own, an outbound connection to a flagged address is weak evidence: threat feeds carry false positives, addresses get recycled between customers, and a busy machine is usually just busy. What is not ordinary is both at once: sustained load with no explained cause, plus a conversation with infrastructure somebody else has reported as a controller.",
+      "why_it_matters": "The two halves are normally owned by different tools and different people — performance monitoring sees the load, network security sees the destination, and neither sees the pair. That gap is where cryptominers and ransomware stagers live for weeks.",
+      "preconditions": "An outbound connection to an address present in a current threat feed, alongside elevated load with no identified legitimate cause.",
+      "remediation": "Identify the owning process before restarting anything: a reboot destroys volatile evidence and rarely removes persistence. Isolate the host rather than blocking a single address — an implant that loses one controller address will use the next.",
+      "keywords": [
+        "command and control",
+        "c2",
+        "beacon",
+        "botnet",
+        "implant",
+        "outbound",
+        "cryptominer",
+        "load average",
+        "compromise",
+        "controller",
+        "callback"
+      ]
+    }
+  ]
+}

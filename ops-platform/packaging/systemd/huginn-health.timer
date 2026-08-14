@@ -1,0 +1,15 @@
+[Unit]
+Description=Run the Huginn codebase-health check daily
+
+[Timer]
+# Daily — codebase health changes on commits, not continuously, so daily is
+# the right cadence (the 3-hourly triage is for accumulating findings; this is
+# for catching a regression). A few minutes after boot for an early read, and
+# a wide random delay so it never fires at a predictable spike.
+OnBootSec=10min
+OnUnitActiveSec=1d
+RandomizedDelaySec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

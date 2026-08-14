@@ -1,0 +1,86 @@
+{
+  "schema_version": "0.1.0",
+  "collected_at": "2026-07-20T11:00:00+00:00",
+  "hostname": "lt-12",
+  "os": "linux",
+  "sections": {
+    "system": {
+      "status": "ok",
+      "reason": null,
+      "duration_ms": 4,
+      "privilege_level": "unprivileged",
+      "data": {
+        "uptime_days": 2.0,
+        "mem_used_percent": 42.0,
+        "load_avg_5m": 0.8
+      }
+    },
+    "network": {
+      "status": "ok",
+      "reason": null,
+      "duration_ms": 12,
+      "privilege_level": "unprivileged",
+      "data": {
+        "gateway": "192.168.1.1",
+        "dns_any_failed": false,
+        "gateway_ping": {
+          "target": "192.168.1.1",
+          "reachable": true
+        },
+        "public_ping": {
+          "target": "1.1.1.1",
+          "reachable": true
+        }
+      }
+    },
+    "disk": {
+      "status": "ok",
+      "reason": null,
+      "duration_ms": 3,
+      "privilege_level": "unprivileged",
+      "data": {
+        "min_free_percent": 48.0
+      }
+    },
+    "logs": {
+      "status": "ok",
+      "reason": null,
+      "duration_ms": 15,
+      "privilege_level": "unprivileged",
+      "data": {
+        "error_count": 5,
+        "entries": []
+      }
+    },
+    "smart": {
+      "status": "ok",
+      "reason": null,
+      "duration_ms": 200,
+      "privilege_level": "elevated",
+      "data": {
+        "disks": [
+          {
+            "device": "/dev/nvme0n1",
+            "health": "PASSED",
+            "attribute_source": "nvme",
+            "critical_warning": 0,
+            "available_spare_percent": 4,
+            "available_spare_threshold": 10,
+            "percentage_used": 96,
+            "media_errors": 47,
+            "error_log_entries": 210,
+            "failing": true,
+            "wear_percent": 96,
+            "spare_below_threshold": true,
+            "spare_threshold_used": 10
+          }
+        ],
+        "any_reallocated": true,
+        "max_pending_sectors": 0,
+        "max_wear_percent": 96,
+        "min_available_spare_percent": 4,
+        "any_spare_below_threshold": true
+      }
+    }
+  }
+}

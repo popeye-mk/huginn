@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Huginn pre-commit hook — the rules that used to run by hand, run for you.
+#
+# It enforces at commit time the two things whose absence has actually bitten:
+#   1. the architecture rules (layers, size limits, and the skills-package
+#      collision guard) — test_architecture.py;
+#   2. that every platform skill still loads under a fork-shadow — the exact
+#      class of the `skills.patrol` outage that took the whole GUI down.
+#
+# Fast and local: no network, and a commit that touches no Python skips both
+# checks entirely, so doc/plan commits stay instant. Install with
+# tools/hooks/install-hooks.sh. Bypass in a genuine emergency with:
+#     git commit --no-verify
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+# Only guard code commits. A commit with no staged .py needs neither check.
+if ! git diff --cached --name-only --diff-filter=ACM | grep -q '\.py$'; then
+    exit 0
+fi
+
+fail() { echo; echo "  ✗ pre-commit: $1"; echo "     (fix it, or bypass with: git commit --no-verify)"; exit 1; }
+
+echo "  pre-commit: architecture rules..."
+if ! python3 tools/test_architecture.py >/tmp/huginn-precommit.log 2>&1; then
+    tail -20 /tmp/huginn-precommit.log | sed 's/^/     /'
+    fail "architecture rules FAILED"
+fi
+
+echo "  pre-commit: platform skills load under fork-shadow..."
+if ! python3 - >/tmp/huginn-precommit2.log 2>&1 <<'PY'
+import sys, types, importlib.util, glob, os
+sys.path.insert(0, ".")
+# Simulate the fork owning the `skills` package, so a cross-skill import
+# (from skills.x) fails here instead of at fork-load in production.
+fake = types.ModuleType("skills"); fake.__path__ = ["/nonexistent"]
+sys.modules["skills"] = fake
+bad = 0
+for p in sorted(glob.glob("skills/*.py")):
+    if p.endswith("__init__.py"):
+        continue
+    spec = importlib.util.spec_from_file_location("_pc_" + os.path.basename(p)[:-3], p)
+    m = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(m)
+    except Exception as e:  # noqa: BLE001
+        print(f"{p}: {type(e).__name__}: {e}"); bad += 1
+sys.exit(1 if bad else 0)
+PY
+then
+    cat /tmp/huginn-precommit2.log | sed 's/^/     /'
+    fail "a platform skill failed to load (the skills.patrol outage class)"
+fi
+
+echo "  ✓ pre-commit checks passed"
+exit 0

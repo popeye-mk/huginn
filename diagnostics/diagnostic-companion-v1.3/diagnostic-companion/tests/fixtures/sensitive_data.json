@@ -1,0 +1,40 @@
+{
+  "schema_version": "0.1.0",
+  "collected_at": "2026-07-20T10:00:00+00:00",
+  "hostname": "jdoe-laptop",
+  "os": "linux",
+  "sections": {
+    "system": {"status": "ok", "reason": null, "duration_ms": 4, "privilege_level": "unprivileged",
+      "data": {"uptime_days": 1.0, "mem_used_percent": 20.0}},
+    "network": {"status": "ok", "reason": null, "duration_ms": 12, "privilege_level": "unprivileged",
+      "data": {
+        "interface": "eth0",
+        "gateway": "192.168.1.1",
+        "dns_servers": ["8.8.8.8", "192.168.1.1"],
+        "dns_resolution": {"example.com": true},
+        "dns_any_failed": false,
+        "gateway_ping": {"target": "192.168.1.1", "reachable": true},
+        "public_ping": {"target": "1.1.1.1", "reachable": true}
+      }},
+    "disk": {"status": "ok", "reason": null, "duration_ms": 3, "privilege_level": "unprivileged",
+      "data": {"min_free_percent": 50.0}},
+    "logs": {"status": "ok", "reason": null, "duration_ms": 20, "privilege_level": "unprivileged",
+      "data": {
+        "error_count": 2,
+        "entries": [
+          "2026-07-20 [err] sshd: Failed password for jdoe from 8.8.4.4 port 51515",
+          "2026-07-20 [err] dhcp: lease renewed for aa:bb:cc:dd:ee:ff, contact jdoe@example.com",
+          "2026-07-20 [err] profile: could not write /home/jdoe/.cache/thumbnails"
+        ]
+      }},
+    "battery": {"status": "ok", "reason": null, "duration_ms": 5, "privilege_level": "unprivileged",
+      "data": {"batteries": [{"name": "BAT0", "capacity_percent": 80, "status": "Discharging",
+                                "cycle_count": 120, "health_percent": 91.0}], "min_health_percent": 91.0}},
+    "wifi": {"status": "ok", "reason": null, "duration_ms": 8, "privilege_level": "unprivileged",
+      "data": {"adapters": [{"interface": "wlan0", "link_quality": "60.", "signal_level_dbm": "-45.",
+                              "ssid": "JohnDoe-HomeNetwork"}], "min_link_quality": 60.0}},
+    "smart": {"status": "ok", "reason": null, "duration_ms": 900, "privilege_level": "elevated",
+      "data": {"disks": [{"device": "/dev/sda", "health": "PASSED", "reallocated_sectors": 0, "pending_sectors": 0}],
+                "any_reallocated": false, "max_pending_sectors": 0}}
+  }
+}

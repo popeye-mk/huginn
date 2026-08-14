@@ -1,0 +1,143 @@
+Hyper-V boot verification — how to run it
+=========================================
+
+WHAT THIS PROVES
+
+  That a backup can be restored AND the machine actually comes back up,
+  on Windows. The Linux side of this is already proven; this closes the
+  Windows half.
+
+  You only need this if you intend to boot-test backups FROM the Windows
+  machine. If your backups are of Linux VMs, or you boot-test on the
+  Linux box, you can skip it entirely.
+
+
+WHY IT NEEDED EXTRA WORK
+
+  On Linux, the guest's boot messages are written straight to a file and
+  we read the file.
+
+  Hyper-V does not do that. It offers the console as a NAMED PIPE — like
+  a phone line that carries nothing unless someone picks up. Without a
+  listener, the console check finds no file and fails EVERY time. A
+  permanently red check is worse than a missing one: it teaches you to
+  ignore the report.
+
+  So a small background PowerShell process now connects to the pipe and
+  copies what it says into a file. Windows then behaves exactly like
+  Linux, and a Windows boot test proves the same thing a Linux one does.
+
+
+BEFORE YOU START
+
+  1. Run PowerShell AS ADMINISTRATOR.
+     Every Hyper-V cmdlet used here needs it. Without elevation the
+     calls fail with an access error, and the platform reports "could
+     not check" — never "the backup is bad".
+
+     Check it is on:
+
+         Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All
+
+     Should say State : Enabled. If not:
+
+         Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All -All
+
+     (that one reboots)
+
+  2. You need a BOOTABLE .vhdx.
+     Any small Windows or Linux VM disk will do. This tests backups OF
+     VM disk images — not bare-metal restore, which this platform does
+     not do.
+
+     If you have an existing Hyper-V VM, its disk is usually under:
+
+         C:\Users\Public\Documents\Hyper-V\Virtual hard disks\
+
+  3. restic must be installed:
+
+         winget install -e --id restic.restic
+
+
+RUNNING IT
+
+  From an elevated PowerShell, in the platform folder:
+
+      python tools\verify_boot_live.py <repo> <passwordfile>
+
+  Or let the harness build everything, the same way the Linux one does.
+  The sequence it performs:
+
+      restic init            -> a throwaway repository
+      restic backup          -> your .vhdx into it
+      restic restore         -> back out to a temp folder
+      New-VM                 -> a disposable Generation 1 VM
+      Set-VMComPort          -> console onto a named pipe
+      Start-VM               -> boot it
+      (pipe reader starts)   -> drains the pipe into a log file
+      wait, then check       -> running? still running? what did it say?
+      Stop-VM / Remove-VM    -> and the reader is stopped first
+
+
+WHAT YOU SHOULD SEE
+
+      status   passed
+      depth    boot
+      proof    True
+      [pass] guest_boot          VM running
+      [pass] guest_stayed_up     still running after 45s
+      [pass] guest_console       console shows boot progress: ...
+      => PROOF OF RECOVERY
+
+
+IF THE CONSOLE CHECK FAILS
+
+  This is the part that has never run for real, so read the message:
+
+  "no COM-port capture ... the pipe reader is not running"
+      The reader process did not start. Usually PowerShell could not be
+      launched, or the VM never reached Running.
+
+  "no COM-port capture ... reader is running but the guest has said
+   nothing yet"
+      The reader connected and the guest has not printed anything. Give
+      it longer, or the guest may not be writing to COM1 at all — some
+      Windows guests need serial console output enabled:
+
+          bcdedit /ems on   +   bcdedit /emssettings EMSPORT:1
+
+  "console was readable but showed no recognisable boot progress"
+      Something arrived but none of the known markers matched. That is
+      reported as COULD NOT CONFIRM, not as a pass. If you can see the
+      log looks healthy, send the file and the markers get widened.
+
+  Generation 1 is used deliberately, not Generation 2. Gen 2 is the
+  modern default but its firmware varies in how it surfaces a serial
+  port, and the console is the only channel this design has.
+
+
+WHAT IS STILL UNPROVEN
+
+  Being straight about it: the PowerShell reader script is written from
+  documentation and has never touched a real named pipe. Its LIFECYCLE
+  is tested (12 tests: starts only after the VM runs, always stopped,
+  degrades rather than crashing) but the script itself needs a real VM.
+
+  The same was true of the virt-install arguments before a real KVM
+  guest proved them — and one of those turned out wrong (--osinfo).
+  Expect the same odds here.
+
+  If it fails, the error text is the useful part. Send it.
+
+
+CLEANING UP
+
+  The harness removes the VM and the reader itself. If a run is
+  interrupted:
+
+      Get-VM ops-verify-* | Stop-VM -TurnOff -Force
+      Get-VM ops-verify-* | Remove-VM -Force
+      Get-Process powershell | Where-Object { $_.StartTime -lt (Get-Date) }
+
+  Console logs live in your home folder under huginn-consoles\ and
+  are safe to delete.

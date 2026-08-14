@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.1.0",
+  "collected_at": "2026-07-20T10:10:00+00:00",
+  "hostname": "ws-07",
+  "os": "linux",
+  "sections": {
+    "system": {"status": "ok", "reason": null, "duration_ms": 4, "privilege_level": "unprivileged",
+      "data": {"uptime_days": 0.2, "mem_used_percent": 30.0, "load_avg_5m": 0.3}},
+    "network": {"status": "ok", "reason": null, "duration_ms": 25, "privilege_level": "unprivileged",
+      "data": {"gateway": null, "dns_any_failed": false,
+               "gateway_ping": {"target": null, "reachable": null},
+               "public_ping": {"target": "1.1.1.1", "reachable": true}}},
+    "disk": {"status": "ok", "reason": null, "duration_ms": 3, "privilege_level": "unprivileged",
+      "data": {"min_free_percent": 70.0}},
+    "logs": {"status": "ok", "reason": null, "duration_ms": 10, "privilege_level": "unprivileged",
+      "data": {"error_count": 0, "entries": []}}
+  }
+}

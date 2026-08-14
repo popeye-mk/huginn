@@ -1,0 +1,17 @@
+[Unit]
+Description=Huginn Network Guard patrol (census, ARP/DHCP anomaly, exposure)
+Documentation=file://%h/anora-ops/ops-platform/NEXT-CHAPTER.md
+
+[Service]
+Type=oneshot
+# %h expands to the user's home. The installer rewrites this line to the
+# real platform path, because the checkout is not always under ~.
+ExecStart=/bin/bash %h/anora-ops/ops-platform/packaging/systemd/huginn-patrol.sh
+# Longer than triage's 300s: a patrol runs census + guard + exposure, and
+# the exposure pass touches every host it found. Still bounded, so a wedged
+# scan is killed rather than left holding the baselines.
+TimeoutStartSec=600
+# Stay out of the way of anything the operator is actually doing. A guard
+# that makes the desktop stutter is a guard that gets switched off.
+Nice=10
+IOSchedulingClass=idle

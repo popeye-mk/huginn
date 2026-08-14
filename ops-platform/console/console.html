@@ -1,0 +1,1239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Huginn</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 96'><rect width='150' height='96' fill='%230a0f1e'/><g fill='%23e8eefc'><path d='M66 58 L14 66 L66 74 Z'/><path d='M78 60 Q61 31 28 30 Q45 59 78 60 Z'/><ellipse cx='86' cy='58' rx='27' ry='11' transform='rotate(-8 86 58)'/><path d='M88 52 Q80 18 46 8 Q54 42 88 52 Z'/><circle cx='111' cy='50' r='9'/><path d='M116 46 L144 52 L116 57 Z'/></g></svg>">
+<!--
+  Huginn console — v2.
+
+  Named for Odin's raven: flies out over the world, sees, and comes back to
+  report. That is the whole product in one image — she reads what is there
+  and tells you. She does not act on the network, and she answers no
+  questions.
+
+  WHAT CHANGED IN V2, and why, so none of it is undone by accident.
+
+  The v1 front page offered 22 verb buttons and 6 controls: 28 things to
+  choose between, all at once, most of them run once a month. It answered
+  "what can I do" and never answered "am I covered". Three changes:
+
+  1. A STATUS STRIP across the top, from GET /api/status. Four readings, in
+     three states — ok / attention / UNKNOWN. The third state is the whole
+     point: a fact that could not be read renders grey and says what was not
+     read. A two-state widget has to put "I could not tell" somewhere, and
+     it always lands on green.
+
+  2. VERBS GROUPED BY THE QUESTION they answer — Watch, What changed, This
+     machine, Act — and folded away behind one primary button. A solo admin
+     at 2am needs one obvious action, not a wall of equal choices.
+
+  3. SETUP IN THREE TABS, one of which is new: "What's mine", a single list
+     of LAN devices AND Wi-Fi radios. They are the same question — is that
+     thing mine? — and splitting it across two vocabularies ("baseline"
+     here, "trusted" there) meant reassembling the answer in your head.
+
+  Deliberately NOT built: a tick-everything-and-Save list. Confirming in
+  bulk is exactly how a twin that is already running gets confirmed forever,
+  so each item is confirmed one at a time, by a button that sends the very
+  command you would have typed — and shows the skill's own warning back.
+  The shortcut adds no power the ask box did not already have.
+
+  Also removed: Prev/Next. They navigated a feed rarely longer than a
+  screen. Clicking a run's header still folds it.
+
+  Design constraints that still hold:
+  - The night sky is CSS only — layered radial-gradients and ~38 hand-placed
+    stars. No image files, no webfonts, no CDN. A tool that binds to loopback
+    must never fetch anything to render its own front page.
+  - Panels are translucent; OUTPUT boxes are not. Findings are read at 2am
+    and legibility beats atmosphere.
+  - No PIN or token here, and none in the server either. That is only safe
+    because it binds 127.0.0.1, so the footer shows the live bind address:
+    the assumption stays visible rather than implied.
+
+  Server contract: POST /api/command/stream with {text, gui_client}, NDJSON
+  events; GET /api/status (read only); GET/POST /api/admin.
+  `__BUILD_STAMP__` is substituted by runtime/app.py at boot.
+-->
+<style>
+  :root {
+    /* Night sky */
+    --sky:#060912; --panel:#0f1728; --panel2:#152039; --line:#1e2b47;
+    --glass:rgba(14,22,40,.72); --solid:rgba(9,14,26,.94);
+    --fg:#e8eefc; --muted:#93a2c4; --dim:#5f6e8e;
+    /* Findings */
+    --crit:#ff6b7a; --warn:#e6b455; --ok:#6fd08c; --info:#7aa2f7;
+    --sec:#c4a7ff; --accent:#7aa2f7; --frost:#4fd6be;
+  }
+  * { box-sizing:border-box; }
+  html { height:100%; background:var(--sky); }
+  body {
+    margin:0; min-height:100%; color:var(--fg); background:transparent;
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column;
+  }
+
+  /* --- the sky: aurora wash + starfield, all generated, nothing fetched --- */
+  body::before {
+    content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(1.5px 1.5px at 4% 12%, rgba(255,255,255,.75), transparent),
+      radial-gradient(1.2px 1.2px at 11% 31%, rgba(255,255,255,.5), transparent),
+      radial-gradient(1.8px 1.8px at 17% 7%,  rgba(255,255,255,.85), transparent),
+      radial-gradient(1.1px 1.1px at 23% 52%, rgba(255,255,255,.45), transparent),
+      radial-gradient(1.4px 1.4px at 28% 19%, rgba(255,255,255,.65), transparent),
+      radial-gradient(1.2px 1.2px at 33% 74%, rgba(255,255,255,.4),  transparent),
+      radial-gradient(1.6px 1.6px at 39% 9%,  rgba(255,255,255,.7),  transparent),
+      radial-gradient(1.1px 1.1px at 44% 38%, rgba(255,255,255,.45), transparent),
+      radial-gradient(1.3px 1.3px at 48% 63%, rgba(255,255,255,.55), transparent),
+      radial-gradient(1.7px 1.7px at 53% 15%, rgba(255,255,255,.8),  transparent),
+      radial-gradient(1.1px 1.1px at 58% 44%, rgba(255,255,255,.4),  transparent),
+      radial-gradient(1.4px 1.4px at 62% 81%, rgba(255,255,255,.5),  transparent),
+      radial-gradient(1.2px 1.2px at 67% 26%, rgba(255,255,255,.6),  transparent),
+      radial-gradient(1.5px 1.5px at 71% 58%, rgba(255,255,255,.55), transparent),
+      radial-gradient(1.9px 1.9px at 76% 11%, rgba(255,255,255,.9),  transparent),
+      radial-gradient(1.1px 1.1px at 81% 35%, rgba(255,255,255,.45), transparent),
+      radial-gradient(1.3px 1.3px at 85% 69%, rgba(255,255,255,.5),  transparent),
+      radial-gradient(1.6px 1.6px at 89% 21%, rgba(255,255,255,.7),  transparent),
+      radial-gradient(1.2px 1.2px at 93% 48%, rgba(255,255,255,.45), transparent),
+      radial-gradient(1.4px 1.4px at 97% 14%, rgba(255,255,255,.6),  transparent),
+      radial-gradient(1.1px 1.1px at 7% 66%,  rgba(255,255,255,.4),  transparent),
+      radial-gradient(1.3px 1.3px at 14% 88%, rgba(255,255,255,.5),  transparent),
+      radial-gradient(1.2px 1.2px at 21% 41%, rgba(255,255,255,.42), transparent),
+      radial-gradient(1.5px 1.5px at 36% 29%, rgba(255,255,255,.62), transparent),
+      radial-gradient(1.1px 1.1px at 42% 86%, rgba(255,255,255,.38), transparent),
+      radial-gradient(1.4px 1.4px at 51% 92%, rgba(255,255,255,.5),  transparent),
+      radial-gradient(1.2px 1.2px at 56% 33%, rgba(255,255,255,.45), transparent),
+      radial-gradient(1.7px 1.7px at 64% 5%,  rgba(255,255,255,.75), transparent),
+      radial-gradient(1.1px 1.1px at 69% 93%, rgba(255,255,255,.35), transparent),
+      radial-gradient(1.3px 1.3px at 74% 72%, rgba(255,255,255,.48), transparent),
+      radial-gradient(1.2px 1.2px at 79% 54%, rgba(255,255,255,.42), transparent),
+      radial-gradient(1.5px 1.5px at 84% 88%, rgba(255,255,255,.55), transparent),
+      radial-gradient(1.1px 1.1px at 91% 77%, rgba(255,255,255,.4),  transparent),
+      radial-gradient(1.4px 1.4px at 96% 62%, rgba(255,255,255,.5),  transparent),
+      radial-gradient(1.2px 1.2px at 9% 50%,  rgba(255,255,255,.44), transparent),
+      radial-gradient(1.3px 1.3px at 26% 64%, rgba(255,255,255,.46), transparent),
+      radial-gradient(1.6px 1.6px at 46% 22%, rgba(255,255,255,.66), transparent),
+      radial-gradient(1.2px 1.2px at 88% 42%, rgba(255,255,255,.44), transparent),
+      /* aurora */
+      radial-gradient(900px 400px at 20% -10%, rgba(79,214,190,.11), transparent 70%),
+      radial-gradient(780px 380px at 78% -12%, rgba(122,162,247,.13), transparent 70%),
+      radial-gradient(1300px 760px at 50% 118%, rgba(122,162,247,.07), transparent 70%),
+      linear-gradient(180deg,#060912 0%,#0a0f1e 42%,#0b1328 100%);
+  }
+  /* The raven herself, watermarked. Present, not shouting. */
+  .watermark {
+    position:fixed; right:-30px; bottom:-10px; width:min(46vw,560px);
+    z-index:-1; opacity:.045; pointer-events:none; fill:var(--accent);
+  }
+
+  /* --- header ------------------------------------------------------------ */
+  header {
+    display:flex; align-items:center; gap:14px;
+    padding:11px 20px; background:var(--glass);
+    -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line); flex-shrink:0;
+  }
+  .brand { display:flex; align-items:center; gap:11px; }
+  .brand .mark { width:34px; height:34px; flex-shrink:0; }
+  .brand .mark circle.ring { fill:none; stroke:var(--accent); stroke-width:5; }
+  .brand .mark g { fill:var(--fg); }
+  .name { font-size:15px; font-weight:700; letter-spacing:.19em; line-height:1.1; }
+  .tag {
+    font-size:9.5px; letter-spacing:.13em; text-transform:uppercase;
+    color:var(--dim); margin-top:2px;
+  }
+  .spacer { flex:1; }
+  .pill {
+    font-size:11.5px; color:var(--muted); background:var(--panel2);
+    border:1px solid var(--line); border-radius:999px; padding:3px 11px;
+  }
+  .pill.live { color:var(--ok); border-color:#245239; }
+  .pill.degraded { color:var(--warn); border-color:#50411b; }
+
+  /* --- 1. THE STATUS STRIP ------------------------------------------------ */
+  .status {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:1px; background:var(--line); border-bottom:1px solid var(--line);
+    flex-shrink:0;
+  }
+  .cell { background:rgba(10,16,30,.86); padding:10px 16px; min-width:0; }
+  .cell .k {
+    font-size:10px; letter-spacing:.11em; text-transform:uppercase;
+    color:var(--dim); margin-bottom:4px;
+  }
+  .cell .v {
+    font-size:13.5px; font-weight:550; display:flex; align-items:center;
+    gap:7px; line-height:1.3;
+  }
+  .cell .s {
+    font-size:11px; color:var(--dim); margin-top:3px; line-height:1.45;
+  }
+  .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .dot.ok { background:var(--ok); box-shadow:0 0 8px rgba(111,208,140,.5); }
+  .dot.attention { background:var(--warn); box-shadow:0 0 8px rgba(230,180,85,.45); }
+  .dot.unknown {
+    background:transparent; border:1.5px solid var(--dim); width:8px; height:8px;
+  }
+
+  /* --- 2. ONE PRIMARY ACTION, THEN GROUPS --------------------------------- */
+  .actions {
+    display:flex; gap:8px; padding:11px 20px; flex-wrap:wrap; align-items:center;
+    background:var(--glass);
+    -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line); flex-shrink:0;
+  }
+  button {
+    font:inherit; font-size:13px; font-weight:550; cursor:pointer;
+    background:var(--panel2); color:var(--fg);
+    border:1px solid var(--line); border-radius:10px; padding:7px 14px;
+    transition:.14s;
+  }
+  button:hover:not(:disabled) {
+    border-color:var(--accent); color:#fff;
+    box-shadow:0 0 0 1px rgba(122,162,247,.22);
+  }
+  button:disabled { opacity:.4; cursor:default; }
+  button.primary {
+    background:linear-gradient(180deg,#3f6fd8,#2f5bc0);
+    border-color:#5581e0; color:#fff; padding:8px 19px; font-weight:650;
+  }
+  button.primary:hover:not(:disabled) {
+    background:linear-gradient(180deg,#4d7ee6,#3a68cf);
+  }
+  button.on { border-color:var(--accent); background:#1b2947; }
+  button.ghost {
+    background:transparent; color:var(--muted); font-weight:500;
+  }
+  .grouprow {
+    display:flex; gap:6px; padding:0 20px 11px; flex-wrap:wrap;
+    background:var(--glass); border-bottom:1px solid var(--line);
+    flex-shrink:0;
+  }
+  .grouprow.hidden { display:none; }
+  .verb {
+    font-size:12.5px; padding:6px 12px; border-radius:9px;
+    background:rgba(21,32,57,.75); text-align:left;
+  }
+  .verb small {
+    display:block; font-size:10px; color:var(--muted); font-weight:400;
+  }
+  .verb.guard { border-color:#245a52; }
+  .verb.guard:hover:not(:disabled) {
+    border-color:var(--frost); box-shadow:0 0 0 1px rgba(79,214,190,.2);
+  }
+
+  /* --- 3. SETUP, IN THREE TABS -------------------------------------------- */
+  .setup {
+    display:none; padding:16px 20px; background:var(--glass);
+    -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line); flex-shrink:0;
+  }
+  .setup.open { display:block; }
+  .setup .inner { max-width:960px; margin:0 auto; }
+  .tabs {
+    display:flex; gap:3px; margin-bottom:15px; border-bottom:1px solid var(--line);
+  }
+  .tab {
+    font-size:12.5px; padding:7px 14px; border-radius:8px 8px 0 0;
+    background:transparent; border:1px solid transparent;
+    border-bottom:2px solid transparent; color:var(--muted); font-weight:500;
+  }
+  .tab:hover:not(:disabled) { color:var(--fg); box-shadow:none; border-color:transparent; }
+  .tab.on { color:var(--fg); border-bottom-color:var(--accent); }
+  .pane { display:none; } .pane.on { display:block; }
+  .chgrid {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:12px;
+  }
+  .chan {
+    background:var(--solid); border:1px solid var(--line);
+    border-radius:11px; padding:13px 15px;
+  }
+  .chan h4 {
+    margin:0 0 3px; font-size:12.5px; font-weight:600;
+    display:flex; align-items:center; gap:8px;
+  }
+  .chan .why { font-size:11px; color:var(--dim); margin:0 0 10px; line-height:1.55; }
+  .fld { display:block; margin-bottom:8px; }
+  .fld span {
+    display:block; font-size:10.5px; color:var(--muted); margin-bottom:3px;
+    letter-spacing:.03em;
+  }
+  .fld input { width:100%; }
+  input[type=text], input[type=password], input[type=number] {
+    font:inherit; font-size:12.5px; padding:7px 10px;
+    background:rgba(6,10,20,.8); color:var(--fg);
+    border:1px solid var(--line); border-radius:8px;
+  }
+  input:focus { outline:none; border-color:var(--accent); }
+  .row2 { display:flex; gap:8px; } .row2 > * { flex:1; }
+  .sw { display:flex; align-items:center; gap:7px; font-size:12px; cursor:pointer; }
+  .sw input { accent-color:var(--accent); width:15px; height:15px; cursor:pointer; }
+  .setbar { display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap; }
+  .kept { font-size:10.5px; color:var(--dim); font-style:italic; }
+  #setStatus { font-size:11.5px; color:var(--muted); }
+  #setStatus.ok { color:var(--ok); } #setStatus.warn { color:var(--warn); }
+
+  /* --- the What's-mine list ----------------------------------------------- */
+  .minebar {
+    display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px;
+  }
+  .minebar .count { font-size:11.5px; color:var(--muted); }
+  .warnbox {
+    border-left:2px solid var(--warn); background:rgba(230,180,85,.06);
+    padding:9px 13px; border-radius:0 8px 8px 0; font-size:11.5px;
+    color:var(--muted); line-height:1.6; margin-bottom:13px;
+  }
+  .item {
+    display:flex; align-items:center; gap:10px; padding:8px 11px;
+    border-radius:8px; font-size:12.5px; border-left:2px solid transparent;
+    flex-wrap:wrap;
+  }
+  .item:nth-child(odd) { background:rgba(21,32,57,.32); }
+  .item.confirmed { border-left-color:var(--ok); }
+  .item.unconfirmed { border-left-color:var(--warn); background:rgba(230,180,85,.07); }
+  .item .nm { font-weight:600; min-width:120px; }
+  .item .ky {
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px;
+    color:var(--muted);
+  }
+  .item .dt { color:var(--dim); font-size:11px; }
+  .item .act { margin-left:auto; display:flex; gap:6px; align-items:center; }
+  .item .act input[type=text] { width:130px; font-size:11.5px; padding:5px 8px; }
+  .item button { font-size:11.5px; padding:5px 11px; border-radius:7px; }
+  .badge {
+    font-size:10px; padding:2px 7px; border-radius:999px;
+    background:rgba(230,180,85,.18); color:var(--warn); white-space:nowrap;
+  }
+  .badge.ok { background:rgba(111,208,140,.15); color:var(--ok); }
+  .badge.dim { background:rgba(95,110,142,.18); color:var(--dim); }
+  .kindhead {
+    font-size:10.5px; letter-spacing:.11em; text-transform:uppercase;
+    color:var(--dim); margin:16px 0 7px; font-weight:600;
+  }
+  .kindhead:first-child { margin-top:0; }
+
+  /* --- feed --------------------------------------------------------------- */
+  main { flex:1; overflow-y:auto; padding:20px 18px; }
+  .wrap { max-width:960px; margin:0 auto; }
+  .empty { text-align:center; padding:52px 20px; color:var(--muted); }
+  .empty .raven { width:92px; opacity:.3; fill:var(--accent); margin-bottom:14px; }
+  .empty h2 { color:var(--fg); font-size:17px; margin:0 0 8px; font-weight:600; }
+  .empty p { margin:4px 0; font-size:13px; }
+  .empty .note { color:var(--dim); font-size:12px; margin-top:20px; line-height:1.7; }
+
+  .entry { margin-bottom:18px; }
+  .entry.collapsed .out { display:none; }
+  .entry.collapsed .entry-head { opacity:.5; }
+  .entry-head {
+    display:flex; align-items:center; gap:8px; cursor:pointer;
+    font-size:11.5px; color:var(--muted); margin-bottom:6px;
+  }
+  .entry-head .verbname { color:var(--accent); font-weight:600; }
+  .out {
+    background:var(--solid); border:1px solid var(--line); border-radius:11px;
+    padding:15px 17px; white-space:pre-wrap; word-break:break-word;
+    font:12.5px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace;
+    box-shadow:0 8px 26px rgba(0,0,0,.35);
+  }
+  .out.err { border-color:#65303a; background:rgba(44,20,25,.95); color:#f7bcc2; }
+  .you { color:var(--fg); }
+  .l-crit { color:var(--crit); } .l-warn { color:var(--warn); }
+  .l-ok { color:var(--ok); } .l-sec { color:var(--sec); }
+  .l-dim { color:var(--dim); } .l-head { color:var(--info); font-weight:600; }
+  .l-act { color:var(--muted); }
+
+  /* --- footer -------------------------------------------------------------- */
+  footer {
+    padding:12px 20px; background:var(--glass);
+    -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+    border-top:1px solid var(--line); flex-shrink:0;
+  }
+  .askrow { display:flex; gap:8px; max-width:960px; margin:0 auto; }
+  #ask { flex:1; padding:10px 13px; border-radius:10px; }
+  #ask::placeholder { color:var(--dim); }
+  #ask:focus { box-shadow:0 0 0 3px rgba(122,162,247,.14); }
+  .hint { max-width:960px; margin:8px auto 0; font-size:11.5px; color:var(--dim); }
+  .cfg {
+    display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+    max-width:960px; margin:9px auto 0; font-size:12px; color:var(--muted);
+  }
+  #status { font-size:11.5px; }
+  #status.warn { color:var(--warn); } #status.ok { color:var(--ok); }
+  #buildStamp {
+    font-size:10.5px; color:var(--dim); opacity:.75; margin-left:8px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+</style>
+</head>
+<body>
+
+<!-- Huginn, watermarked into the corner of her own console. -->
+<svg class="watermark" viewBox="0 0 150 96" aria-hidden="true">
+  <path d="M66 58 L14 66 L66 74 Z"/>
+  <path d="M78 60 Q61 31 28 30 Q45 59 78 60 Z"/>
+  <ellipse cx="86" cy="58" rx="27" ry="11" transform="rotate(-8 86 58)"/>
+  <path d="M88 52 Q80 18 46 8 Q54 42 88 52 Z"/>
+  <circle cx="111" cy="50" r="9"/>
+  <path d="M116 46 L144 52 L116 57 Z"/>
+</svg>
+
+<header>
+  <div class="brand">
+    <svg class="mark" viewBox="0 0 150 150" aria-label="Huginn">
+      <circle class="ring" cx="75" cy="75" r="66"/>
+      <g transform="translate(6,32) scale(0.92)">
+        <path d="M66 58 L14 66 L66 74 Z"/>
+        <path d="M78 60 Q61 31 28 30 Q45 59 78 60 Z"/>
+        <ellipse cx="86" cy="58" rx="27" ry="11" transform="rotate(-8 86 58)"/>
+        <path d="M88 52 Q80 18 46 8 Q54 42 88 52 Z"/>
+        <circle cx="111" cy="50" r="9"/>
+        <path d="M116 46 L144 52 L116 57 Z"/>
+      </g>
+    </svg>
+    <div>
+      <div class="name">HUGINN</div>
+      <div class="tag">flies out · sees · reports back</div>
+    </div>
+  </div>
+  <div class="pill" id="machinePill">this machine</div>
+  <div class="spacer"></div>
+  <div class="pill" id="memPill">memory: unknown</div>
+</header>
+
+<!-- 1. STATUS STRIP — filled from GET /api/status; grey until it answers. -->
+<div class="status" id="strip">
+  <div class="cell">
+    <div class="k">Last patrol</div>
+    <div class="v"><span class="dot unknown"></span>reading…</div>
+    <div class="s">asking the server</div>
+  </div>
+  <div class="cell">
+    <div class="k">If something happens</div>
+    <div class="v"><span class="dot unknown"></span>reading…</div>
+    <div class="s"></div>
+  </div>
+  <div class="cell">
+    <div class="k">Witnesses</div>
+    <div class="v"><span class="dot unknown"></span>reading…</div>
+    <div class="s"></div>
+  </div>
+  <div class="cell">
+    <div class="k">Confirmed as yours</div>
+    <div class="v"><span class="dot unknown"></span>reading…</div>
+    <div class="s"></div>
+  </div>
+</div>
+
+<!-- 2. One primary action; everything else grouped and folded. -->
+<div class="actions">
+  <button class="primary" id="checkNow" data-verb="patrol">Check now</button>
+  <button id="g-watch-btn" data-group="watch">Watch ▸</button>
+  <button id="g-changed-btn" data-group="changed">What changed ▸</button>
+  <button id="g-machine-btn" data-group="machine">This machine ▸</button>
+  <button id="g-act-btn" data-group="act">Act ▸</button>
+  <div class="spacer"></div>
+  <button class="ghost" id="refreshBtn" title="re-read the status strip">↻ Refresh</button>
+  <button id="setupBtn">⚙ Setup</button>
+  <button class="ghost" id="clearBtn">Clear</button>
+</div>
+
+<div class="grouprow hidden" id="g-watch">
+  <button class="verb guard" data-verb="patrol">Patrol<small>every check + alert</small></button>
+  <button class="verb guard" data-verb="census">Census<small>who's on the LAN</small></button>
+  <button class="verb guard" data-verb="guard">Guard<small>ARP / rogue DHCP</small></button>
+  <button class="verb guard" data-verb="expose">Expose<small>open ports</small></button>
+  <button class="verb guard" data-verb="wifi">Wi-Fi<small>evil twin</small></button>
+  <button class="verb guard" data-verb="namewatch">Names<small>LLMNR poisoning</small></button>
+  <button class="verb guard" data-verb="corroborate">Corroborate<small>second witness</small></button>
+</div>
+<div class="grouprow hidden" id="g-changed">
+  <button class="verb guard" data-verb="dashboard">Dashboard<small>pane of glass</small></button>
+  <button class="verb guard" data-verb="timeline">Timeline<small>what changed</small></button>
+  <button class="verb guard" data-verb="digest">Digest<small>weekly briefing</small></button>
+  <button class="verb" data-verb="history">History<small>seen before</small></button>
+  <button class="verb" data-verb="devices">Devices<small>the fleet</small></button>
+</div>
+<div class="grouprow hidden" id="g-machine">
+  <button class="verb" data-verb="triage">Triage<small>every engine</small></button>
+  <button class="verb" data-verb="diagnose">Diagnose<small>host health</small></button>
+  <button class="verb" data-verb="netcheck">Network<small>who is at fault</small></button>
+  <button class="verb" data-verb="security">Security<small>exposure</small></button>
+  <button class="verb" data-verb="backup">Backup<small>can we restore</small></button>
+  <button class="verb" data-verb="threat">Threat<small>outbound check</small></button>
+</div>
+<div class="grouprow hidden" id="g-act">
+  <button class="verb guard" data-verb="harden">Harden<small>what would work</small></button>
+  <button class="verb guard" data-verb="mitigate">Mitigate<small>fixes you run</small></button>
+  <button class="verb guard" data-verb="capture">Capture<small>freeze evidence</small></button>
+  <button class="verb" data-verb="admin">Admin<small>who gets told</small></button>
+</div>
+
+<!-- 3. SETUP — three tabs. -->
+<div class="setup" id="setup">
+  <div class="inner">
+    <div class="tabs">
+      <button class="tab on" data-tab="alerts">Who gets told</button>
+      <button class="tab" data-tab="mine">What's mine</button>
+      <button class="tab" data-tab="when">When &amp; how loud</button>
+    </div>
+
+    <!-- TAB 1 -------------------------------------------------------------- -->
+    <div class="pane on" id="p-alerts">
+      <div class="chgrid">
+        <div class="chan">
+          <h4><label class="sw"><input type="checkbox" id="sDesktop"> Desktop</label></h4>
+          <p class="why">A toast on this machine. No network, nothing stored.
+            Reaches you only while you are sitting here.</p>
+        </div>
+        <div class="chan">
+          <h4><label class="sw"><input type="checkbox" id="sNtfyOn"> ntfy push</label></h4>
+          <p class="why">Reaches your phone when the machine is off or you are away.
+            The topic <b>is</b> the password — anyone who knows it receives your alerts.</p>
+          <label class="fld"><span>TOPIC <em id="sNtfyKept" class="kept"></em></span>
+            <input type="password" id="sNtfyTopic" autocomplete="off" placeholder="paste your topic"></label>
+          <label class="fld"><span>SERVER</span>
+            <input type="text" id="sNtfyServer" autocomplete="off" placeholder="https://ntfy.sh"></label>
+        </div>
+        <div class="chan">
+          <h4><label class="sw"><input type="checkbox" id="sMailOn"> Email (SMTP)</label></h4>
+          <p class="why">Archivable, but stores a password on this machine — the same
+            class of secret as a router password. Prefer ntfy unless you want mail.</p>
+          <div class="row2">
+            <label class="fld"><span>HOST</span>
+              <input type="text" id="sMailHost" autocomplete="off" placeholder="smtp.gmail.com"></label>
+            <label class="fld" style="max-width:88px"><span>PORT</span>
+              <input type="number" id="sMailPort" placeholder="587"></label>
+          </div>
+          <label class="fld"><span>SEND TO</span>
+            <input type="text" id="sMailTo" autocomplete="off" placeholder="you@example.com"></label>
+          <label class="fld"><span>USERNAME</span>
+            <input type="text" id="sMailUser" autocomplete="off"></label>
+          <label class="fld"><span>PASSWORD <em id="sMailKept" class="kept"></em></span>
+            <input type="password" id="sMailPass" autocomplete="new-password"
+                   placeholder="stored 0600 in data/secrets/smtp.key"></label>
+        </div>
+      </div>
+      <div class="setbar">
+        <button class="primary" id="setSave">Save</button>
+        <button id="setTest">Save &amp; send test alert</button>
+        <span id="setStatus"></span>
+      </div>
+    </div>
+
+    <!-- TAB 2 — the new one: LAN and Wi-Fi in ONE list --------------------- -->
+    <div class="pane" id="p-mine">
+      <div class="warnbox" id="mineWarn">
+        A device or a radio is <b>confirmed</b> only when <i>you</i> said it was
+        yours — a LAN device by naming it, a radio by trusting its BSSID.
+        Being in the baseline is not confirmation: the census records everything
+        it meets, which is how it spots something new, but it never claims the
+        thing belongs here. <b>Check these against your own equipment</b>, not
+        against what they call themselves.
+      </div>
+      <div class="minebar">
+        <button class="ghost on" data-filter="all">All</button>
+        <button class="ghost" data-filter="lan">LAN devices</button>
+        <button class="ghost" data-filter="wifi">Wi-Fi radios</button>
+        <button class="ghost" data-filter="unconfirmed">Unconfirmed only</button>
+        <span class="spacer"></span>
+        <span class="count" id="mineCount"></span>
+      </div>
+      <div id="mineList"></div>
+      <p class="why" id="mineFoot" style="font-size:11px;color:var(--dim);line-height:1.6"></p>
+    </div>
+
+    <!-- TAB 3 -------------------------------------------------------------- -->
+    <div class="pane" id="p-when">
+      <div class="chgrid">
+        <div class="chan">
+          <h4>Tell me at</h4>
+          <p class="why">Below this, findings are recorded but you are not
+            interrupted. <b>warning</b> is the sensible floor — at <b>critical</b>
+            a new device on the LAN would pass without a word.</p>
+          <label class="fld"><span>ANNOUNCE AT SEVERITY AND ABOVE</span>
+            <input type="text" id="sMinSev" autocomplete="off" placeholder="warning"></label>
+        </div>
+        <div class="chan">
+          <h4>Quiet hours</h4>
+          <p class="why">Holds <b>warnings</b> only; a <b>critical</b> alert always
+            delivers — 04:00 is exactly when a spoofed gateway matters. These
+            DISCARD rather than defer, so with this machine usually off overnight
+            they can only lose information. Blank = off.</p>
+          <div class="row2">
+            <label class="fld"><span>QUIET FROM (hour)</span>
+              <input type="number" id="sQuietFrom" min="0" max="23" placeholder="—"></label>
+            <label class="fld"><span>UNTIL (hour)</span>
+              <input type="number" id="sQuietTo" min="0" max="23" placeholder="—"></label>
+          </div>
+        </div>
+        <div class="chan">
+          <h4>Schedule</h4>
+          <p class="why">Patrol runs hourly and catches up after the machine has
+            been off, so a missed window becomes a morning briefing rather than a
+            hole. Changing the cadence is a system-timer edit, not a setting here —
+            a schedule the console could silently disagree with would be worse
+            than one it does not claim to own.</p>
+          <div style="font-size:12px;color:var(--muted)" id="whenPatrol">—</div>
+        </div>
+      </div>
+      <div class="setbar">
+        <button class="primary" id="setSave2">Save</button>
+        <span id="setStatus2" style="font-size:11.5px;color:var(--muted)"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="wrap" id="feed">
+    <div class="empty" id="empty">
+      <svg class="raven" viewBox="0 0 150 96" aria-hidden="true">
+        <path d="M66 58 L14 66 L66 74 Z"/>
+        <path d="M78 60 Q61 31 28 30 Q45 59 78 60 Z"/>
+        <ellipse cx="86" cy="58" rx="27" ry="11" transform="rotate(-8 86 58)"/>
+        <path d="M88 52 Q80 18 46 8 Q54 42 88 52 Z"/>
+        <circle cx="111" cy="50" r="9"/>
+        <path d="M116 46 L144 52 L116 57 Z"/>
+      </svg>
+      <h2>Nothing run yet</h2>
+      <p>The strip above is what the last patrol already found.
+        <b>Check now</b> runs a fresh one.</p>
+      <p class="note">
+        An empty console is not a clean bill of health.<br>
+        Findings are recorded, so repeats are counted rather than duplicated.
+      </p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="askrow">
+    <input type="text" id="ask" placeholder="Type a verb — patrol, census, wifi, timeline, label 192.168.1.5 my-nas…" autocomplete="off">
+    <button class="primary" id="sendBtn">Send</button>
+  </div>
+  <div class="hint">Verbs work in English, Nederlands and Français — try “beveiliging” or “volledige controle”.
+    Huginn runs verbs and reports what she measured; she does not answer general questions.</div>
+  <div class="cfg">
+    <span id="bindNote">local only — 127.0.0.1</span>
+    <span class="spacer"></span>
+    <span id="status"></span>
+    <span id="buildStamp" title="running code version — if this doesn't change after a restart, the server is stale">__BUILD_STAMP__</span>
+  </div>
+</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const feed = $('feed');
+
+// Served by Huginn herself, so the origin is already correct. No field to
+// fill in, and nothing to mistype at 2am.
+function baseUrl() {
+  return location.origin.startsWith('http') ? location.origin : 'http://127.0.0.1:8790';
+}
+function setStatus(msg, kind) {
+  const el = $('status'); el.textContent = msg || ''; el.className = kind || '';
+}
+
+// ---------------------------------------------------------------------------
+// 1. THE STATUS STRIP
+//
+// Three states, and `unknown` is not a shade of ok. A cell whose fact could
+// not be read renders a hollow grey dot and prints the reason — never a
+// filled dot, never a reassuring blank. The strip is a claim about coverage,
+// so a gap in it must LOOK like a gap.
+// ---------------------------------------------------------------------------
+let lastStatus = null;
+
+function renderStrip(data) {
+  const strip = $('strip');
+  const cells = (data && data.cells) || [];
+  if (!cells.length) {
+    strip.innerHTML = '';
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const k = document.createElement('div'); k.className = 'k';
+    k.textContent = 'Status';
+    const v = document.createElement('div'); v.className = 'v';
+    const dot = document.createElement('span'); dot.className = 'dot unknown';
+    v.appendChild(dot);
+    v.appendChild(document.createTextNode('could not be read'));
+    const s = document.createElement('div'); s.className = 's';
+    s.textContent = (data && data.message) ||
+      'the server did not answer /api/status — nothing here was checked';
+    cell.appendChild(k); cell.appendChild(v); cell.appendChild(s);
+    strip.appendChild(cell);
+    return;
+  }
+  strip.innerHTML = '';
+  cells.forEach(c => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const k = document.createElement('div'); k.className = 'k'; k.textContent = c.key;
+    const v = document.createElement('div'); v.className = 'v';
+    const dot = document.createElement('span');
+    dot.className = 'dot ' + (c.state || 'unknown');
+    v.appendChild(dot);
+    v.appendChild(document.createTextNode(c.value || ''));
+    const s = document.createElement('div'); s.className = 's'; s.textContent = c.sub || '';
+    cell.appendChild(k); cell.appendChild(v); cell.appendChild(s);
+    strip.appendChild(cell);
+  });
+}
+
+async function loadStatus() {
+  try {
+    const res = await fetch(baseUrl() + '/api/status');
+    const data = await res.json();
+    lastStatus = data;
+    renderStrip(data);
+    if (data.machine) $('machinePill').textContent = data.machine;
+    renderMine();
+    renderWhen();
+  } catch (e) {
+    lastStatus = null;
+    // A failed fetch is itself a status: say so in the strip rather than
+    // leaving the last good reading on screen pretending to be current.
+    renderStrip({ message: 'could not reach Huginn (' + e + ') — this strip is not current' });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 2. WHAT'S MINE — one list, LAN and Wi-Fi
+//
+// No tick-all-and-save. Confirming in bulk is precisely how an evil twin
+// that is already running gets confirmed forever, and how eleven unexamined
+// devices become eleven "known" ones in a single click. Each item is
+// confirmed on its own, by a button that sends the exact command the ask box
+// would have sent — so this adds a shortcut, not a new power.
+// ---------------------------------------------------------------------------
+let mineFilter = 'all';
+
+function itemMatches(it) {
+  if (mineFilter === 'all') return true;
+  if (mineFilter === 'unconfirmed') return !it.confirmed;
+  return it.kind === mineFilter;
+}
+
+function badge(text, cls) {
+  const b = document.createElement('span');
+  b.className = 'badge' + (cls ? ' ' + cls : '');
+  b.textContent = text;
+  return b;
+}
+
+function lanRow(it) {
+  const wrap = document.createElement('span');
+  wrap.className = 'act';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = it.confirmed ? 'rename…' : 'what is it?';
+  const go = document.createElement('button');
+  go.textContent = it.confirmed ? 'Rename' : 'Name it';
+  go.addEventListener('click', () => {
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    runAndRefresh(it.confirm_with + name, 'label');
+  });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') go.click(); });
+  wrap.appendChild(input); wrap.appendChild(go);
+  return wrap;
+}
+
+function wifiRow(it) {
+  const wrap = document.createElement('span');
+  wrap.className = 'act';
+  const go = document.createElement('button');
+  go.textContent = it.confirmed ? 'Withdraw trust' : 'Confirm this radio';
+  go.addEventListener('click', () => runAndRefresh(it.confirm_with, 'wifi'));
+  wrap.appendChild(go);
+  return wrap;
+}
+
+function mineRow(it) {
+  const row = document.createElement('div');
+  row.className = 'item ' + (it.confirmed ? 'confirmed' : 'unconfirmed');
+
+  const nm = document.createElement('span');
+  nm.className = 'nm'; nm.textContent = it.name || '(unnamed)';
+  const ky = document.createElement('span');
+  ky.className = 'ky'; ky.textContent = it.key;
+  const dt = document.createElement('span');
+  dt.className = 'dt'; dt.textContent = it.detail || '';
+  row.appendChild(nm); row.appendChild(ky); row.appendChild(dt);
+
+  if (!it.present) row.appendChild(badge(it.note || 'not seen', 'dim'));
+  else if (it.note) row.appendChild(badge(it.note, it.confirmed ? 'ok' : ''));
+  if (!it.confirmed) row.appendChild(badge('unconfirmed'));
+
+  if (it.confirm_with) {
+    row.appendChild(it.kind === 'lan' ? lanRow(it) : wifiRow(it));
+  }
+  return row;
+}
+
+function renderMine() {
+  const list = $('mineList');
+  list.innerHTML = '';
+  const inv = lastStatus && lastStatus.inventory;
+  if (!inv) {
+    list.textContent = 'Nothing read yet — press Refresh.';
+    $('mineCount').textContent = '';
+    $('mineFoot').textContent = '';
+    return;
+  }
+  const items = (inv.items || []).filter(itemMatches);
+  const kinds = [['lan', 'LAN devices'], ['wifi', 'Wi-Fi radios']];
+  kinds.forEach(([kind, title]) => {
+    const some = items.filter(i => i.kind === kind);
+    if (!some.length) return;
+    const h = document.createElement('div');
+    h.className = 'kindhead'; h.textContent = title + ' — ' + some.length;
+    list.appendChild(h);
+    some.forEach(i => list.appendChild(mineRow(i)));
+  });
+  if (!items.length) {
+    list.textContent = 'Nothing matches this filter.';
+  }
+
+  const c = inv.counts || {};
+  $('mineCount').textContent =
+    (c.confirmed || 0) + ' of ' + (c.total || 0) + ' confirmed';
+
+  const notes = [];
+  (inv.unreadable || []).forEach(u => notes.push('NOT CHECKED: ' + u + '.'));
+  if (inv.ignored) {
+    notes.push(inv.ignored + ' radio(s) on networks that are not yours were heard ' +
+               'and left out — a neighbour\'s access point is a neighbour\'s business.');
+  }
+  if (inv.as_of) {
+    notes.push('“Here now” means: as of the last census, ' +
+               new Date(inv.as_of).toLocaleString() + '.');
+  }
+  $('mineFoot').textContent = notes.join(' ');
+}
+
+function renderWhen() {
+  const cell = ((lastStatus && lastStatus.cells) || [])
+    .find(c => c.key === 'Last patrol');
+  $('whenPatrol').textContent = cell ? (cell.value + ' · ' + cell.sub) : '—';
+}
+
+// Run a verb, show its output, then re-read the strip — so the effect of a
+// confirmation is visible immediately rather than on the next page load.
+async function runAndRefresh(text, label) {
+  await send(text, label || text);
+  loadStatus();
+}
+
+document.querySelectorAll('[data-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    mineFilter = btn.dataset.filter;
+    document.querySelectorAll('[data-filter]').forEach(
+      b => b.classList.toggle('on', b === btn));
+    renderMine();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Output rendering.
+//
+// Severity is inferred from the text the skills already produce, rather than
+// from a parallel data format. The skills are the source of truth for what a
+// line means; the console only colours it. If their wording changes, the worst
+// case is a line rendered plain — never a line rendered wrongly urgent.
+// ---------------------------------------------------------------------------
+function classifyLine(line) {
+  const t = line.trim();
+  if (/^=+$/.test(t) || /^STORY \d/.test(t)) return 'l-head';
+  if (/\[SECURITY\]|\[security\]/.test(t))    return 'l-sec';
+  if (/\[critical\]/.test(t))                 return 'l-crit';
+  if (/\[warning\]/.test(t))                  return 'l-warn';
+  if (/could not run|Not graded|not tested for|not a clean bill/i.test(t)) return 'l-warn';
+  if (/NOT CHECKED|Could NOT|NOT DELIVERED/.test(t)) return 'l-warn';
+  if (/^→/.test(t) || /^Do this:/.test(t) || /^->/.test(t)) return 'l-act';
+  if (/^(Explains|Coverage|Engines run|Recurring|Related to|Not available)/.test(t)) return 'l-dim';
+  if (/never checked|not the same as healthy|partial data/.test(t)) return 'l-warn';
+  if (/environment-level/.test(t))            return 'l-head';
+  if (/^\s*Machines|^\s*Seen on more than one/.test(t)) return 'l-head';
+  if (/No problems found|No exposure found|No changes worth alerting/i.test(t)) return 'l-ok';
+  return '';
+}
+
+function renderOutput(text) {
+  const box = document.createElement('div');
+  box.className = 'out';
+  text.split('\n').forEach(line => {
+    const span = document.createElement('span');
+    const cls = classifyLine(line);
+    if (cls) span.className = cls;
+    span.textContent = line + '\n';
+    box.appendChild(span);
+  });
+  // The Guard dashboard is written to a file on the server; give it a real
+  // link so it opens in a new tab on click. Read-only page — safe anywhere.
+  if (/NETWORK GUARD DASHBOARD/.test(text)) {
+    const open = document.createElement('a');
+    open.href = baseUrl() + '/guard/dashboard';
+    open.target = '_blank'; open.rel = 'noopener';
+    open.textContent = '⧉ Open the dashboard';
+    open.style.cssText =
+      'display:inline-block;margin-top:10px;padding:7px 13px;border-radius:8px;' +
+      'background:var(--accent);color:#08101f;font-weight:600;text-decoration:none;';
+    box.appendChild(open);
+  }
+  return box;
+}
+
+function addEntry(verb, promptText) {
+  const placeholder = $('empty');
+  if (placeholder) placeholder.remove();
+
+  const entry = document.createElement('div');
+  entry.className = 'entry';
+  const head = document.createElement('div');
+  head.className = 'entry-head';
+  const name = document.createElement('span');
+  name.className = 'verbname'; name.textContent = verb;
+  const time = document.createElement('span');
+  time.textContent = new Date().toLocaleTimeString();
+  head.appendChild(name); head.appendChild(time);
+  entry.appendChild(head);
+
+  if (promptText && promptText !== verb) {
+    const you = document.createElement('div');
+    you.className = 'entry-head you'; you.textContent = promptText;
+    entry.appendChild(you);
+  }
+
+  const out = document.createElement('div');
+  out.className = 'out l-dim'; out.textContent = 'running…';
+  entry.appendChild(out);
+  feed.appendChild(entry);
+  entry.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return { entry, out };
+}
+
+// The skills report their own retrieval method. Surfacing it here means a
+// degraded memory backend is visible in the UI, not only in a log.
+function updateMemoryPill(text) {
+  const pill = $('memPill');
+  if (/by semantic/.test(text)) {
+    pill.textContent = 'memory: semantic'; pill.className = 'pill live';
+  } else if (/semantic recall unavailable/.test(text)) {
+    pill.textContent = 'memory: degraded (substring)'; pill.className = 'pill degraded';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sending
+// ---------------------------------------------------------------------------
+let busy = false;
+let currentRun = null;   // AbortController of the run in flight
+
+function setBusy(state) {
+  busy = state;
+  // Only the verb buttons lock during a run. Clear, Refresh and the nav
+  // controls stay alive: a minutes-long triage must never take the whole
+  // console hostage.
+  document.querySelectorAll('button[data-verb]').forEach(b => { b.disabled = state; });
+}
+
+async function send(text, verbLabel) {
+  if (busy || !text.trim()) return;
+  setBusy(true);
+  setStatus('');   // stale 'Cancelled.' must not outlive its run
+
+  const slot = addEntry(verbLabel || 'ask', text);
+  let outEl = slot.out;
+
+  // The running line carries a SMALL explicit cancel target. v1 made the
+  // whole running box clickable and a stray click cancelled a scan within a
+  // minute of the operator using it.
+  currentRun = new AbortController();
+  outEl.textContent = 'running…  ';
+  const cancelLink = document.createElement('span');
+  cancelLink.textContent = '✕ cancel';
+  cancelLink.style.cssText = 'color:var(--accent);cursor:pointer;text-decoration:underline;';
+  cancelLink.addEventListener('click', () => { if (currentRun) currentRun.abort(); });
+  outEl.appendChild(cancelLink);
+
+  const payload = JSON.stringify({ text, gui_client: true, speech_language: 'english' });
+
+  try {
+    const res = await fetch(baseUrl() + '/api/command/stream', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: payload, signal: currentRun.signal
+    });
+
+    // Huginn's own server has no auth path at all — no token, no PIN. So a
+    // 401 cannot have come from her: something else is answering on this
+    // port, or sitting in front of her. Say that, rather than sending the
+    // operator to hunt for a setting that does not exist.
+    if (res.status === 401) {
+      outEl.className = 'out err';
+      outEl.textContent =
+        'Got 401 Unauthorized — but Huginn has no authentication to fail.\n\n' +
+        'Something else is answering on ' + baseUrl() + ': a proxy in front ' +
+        'of her, or another service holding the port.\n' +
+        'Check what is listening before trusting anything on this page.';
+      setStatus('Not Huginn answering.', 'warn');
+      return;
+    }
+    if (!res.ok) {
+      outEl.className = 'out err';
+      outEl.textContent = 'Request failed: ' + (await res.text());
+      setStatus('Request failed.', 'warn');
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let acc = '', buf = '', complete = false;
+
+    while (!complete) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: !done });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        let ev;
+        try { ev = JSON.parse(line); } catch (e) { continue; }
+
+        if (ev.type === 'chunk') {
+          acc += ev.text;
+          const next = renderOutput(acc);
+          outEl.replaceWith(next); outEl = next;
+        } else if (ev.type === 'done') {
+          const finalText = (acc || String(ev.message || '')).trim();
+          const next = renderOutput(finalText || '(no output)');
+          outEl.replaceWith(next); outEl = next;
+          updateMemoryPill(finalText);
+          // The run is over. Without this the loop keeps awaiting a stream
+          // close the server may never send, finally never fires, and busy
+          // stays true — locking every verb after the FIRST one.
+          complete = true;
+          try { await reader.cancel(); } catch (_) {}
+          break;
+        }
+      }
+    }
+    setStatus('');
+  } catch (e) {
+    if (e && e.name === 'AbortError') {
+      outEl.className = 'out l-dim';
+      outEl.textContent = '⏹ cancelled — the server may still finish this in the background; anything it records is kept.';
+      setStatus('Cancelled — ready for the next verb.', 'warn');
+    } else {
+      outEl.className = 'out err';
+      outEl.textContent = 'Could not reach Huginn: ' + e;
+      setStatus('Connection failed.', 'warn');
+    }
+  } finally {
+    currentRun = null;
+    setBusy(false);
+    $('ask').focus();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Wiring
+// ---------------------------------------------------------------------------
+document.querySelectorAll('button[data-verb]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const verb = btn.dataset.verb;
+    // The primary action re-reads the strip afterwards: pressing "Check now"
+    // and watching the "Last patrol" cell stay stale would be its own bug.
+    if (btn.id === 'checkNow') runAndRefresh(verb, verb);
+    else send(verb, verb);
+  });
+});
+
+// Verb groups — one open at a time; clicking the open one closes it.
+document.querySelectorAll('button[data-group]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.group;
+    const row = $('g-' + target);
+    const opening = row.classList.contains('hidden');
+    document.querySelectorAll('.grouprow').forEach(r => r.classList.add('hidden'));
+    document.querySelectorAll('button[data-group]').forEach(b => {
+      b.classList.remove('on');
+      b.textContent = b.textContent.replace('▾', '▸');
+    });
+    if (opening) {
+      row.classList.remove('hidden');
+      btn.classList.add('on');
+      btn.textContent = btn.textContent.replace('▸', '▾');
+    }
+  });
+});
+
+// Setup tabs
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const name = tab.dataset.tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t === tab));
+    document.querySelectorAll('.pane').forEach(
+      p => p.classList.toggle('on', p.id === 'p-' + name));
+    if (name === 'mine') renderMine();
+  });
+});
+
+$('sendBtn').addEventListener('click', () => {
+  const v = $('ask').value; $('ask').value = ''; send(v);
+});
+$('ask').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { const v = $('ask').value; $('ask').value = ''; send(v); }
+});
+$('refreshBtn').addEventListener('click', loadStatus);
+
+// Click a run's header to fold it to one line. (Prev/Next are gone: they
+// navigated a feed that is rarely longer than a screen.)
+feed.addEventListener('click', e => {
+  const head = e.target.closest('.entry-head');
+  if (head && !head.classList.contains('you')) {
+    head.parentElement.classList.toggle('collapsed');
+  }
+});
+
+$('clearBtn').addEventListener('click', () => {
+  // Clear during a run must not leave a dead console: the feed wipe deletes
+  // the cancel affordance, so Clear cancels the run itself.
+  if (currentRun) currentRun.abort();
+  setBusy(false);
+  setStatus('');
+  feed.innerHTML =
+    '<div class="empty" id="empty"><h2>Cleared</h2>' +
+    '<p>The strip above still reflects the last patrol.</p>' +
+    '<p class="note">Findings already recorded are kept — clearing only empties this view.</p></div>';
+});
+
+// Show the actual origin being talked to, so "local only" is something the
+// user can check rather than something the console asserts.
+(function showBind() {
+  const note = $('bindNote');
+  const origin = location.origin.startsWith('http') ? location.origin : 'http://127.0.0.1:8790';
+  const local = /\/\/(127\.0\.0\.1|localhost|\[::1\])/.test(origin);
+  note.textContent = local ? ('local only — ' + origin) : ('reachable at ' + origin);
+  if (!local) {
+    note.style.color = 'var(--warn)';
+    note.title = 'Huginn is not bound to loopback. She has no authentication, ' +
+                 'so anything that can reach this address can run commands.';
+  }
+})();
+
+// ---------------------------------------------------------------------------
+// Settings — the registered administrator.
+//
+// The secrets (ntfy topic, SMTP password) are NEVER sent to this page: GET
+// /api/admin returns booleans for them. So a blank secret field means "keep
+// what is stored", and only a non-blank one overwrites. Without that rule
+// this panel would erase both credentials every time it was saved.
+// ---------------------------------------------------------------------------
+const setEl = $('setup');
+
+function fillSettings(a) {
+  $('sDesktop').checked   = !!a.desktop.enabled;
+  $('sNtfyOn').checked    = !!a.ntfy.enabled;
+  $('sNtfyServer').value  = a.ntfy.server || '';
+  $('sMailOn').checked    = !!a.email.enabled;
+  $('sMailHost').value    = a.email.host || '';
+  $('sMailPort').value    = a.email.port || 587;
+  $('sMailTo').value      = a.email.to || '';
+  $('sMailUser').value    = a.email.username || '';
+  $('sMinSev').value      = a.min_severity || 'warning';
+  const q = a.quiet_hours || {};
+  $('sQuietFrom').value   = (q.start === null || q.start === undefined) ? '' : q.start;
+  $('sQuietTo').value     = (q.end === null || q.end === undefined) ? '' : q.end;
+  // Say whether a secret exists without ever showing it.
+  $('sNtfyKept').textContent = a.ntfy.topic_set
+    ? '— stored (' + a.ntfy.topic_hint + ') · blank keeps it' : '— not set yet';
+  $('sMailKept').textContent = a.email.password_set
+    ? '— stored · blank keeps it' : '— not set yet';
+  $('sNtfyTopic').value = '';
+  $('sMailPass').value = '';
+}
+
+function settingsPatch() {
+  const num = (id) => {
+    const v = $(id).value.trim();
+    return v === '' ? null : Number(v);
+  };
+  return {
+    min_severity: $('sMinSev').value.trim() || 'warning',
+    quiet_hours: { start: num('sQuietFrom'), end: num('sQuietTo') },
+    desktop: { enabled: $('sDesktop').checked },
+    ntfy: {
+      enabled: $('sNtfyOn').checked,
+      server: $('sNtfyServer').value.trim(),
+      topic: $('sNtfyTopic').value.trim()      // blank = keep stored
+    },
+    email: {
+      enabled: $('sMailOn').checked,
+      host: $('sMailHost').value.trim(),
+      port: $('sMailPort').value.trim(),
+      to: $('sMailTo').value.trim(),
+      username: $('sMailUser').value.trim(),
+      password: $('sMailPass').value           // blank = keep stored
+    }
+  };
+}
+
+function setStat(msg, kind) {
+  [['setStatus', kind], ['setStatus2', kind]].forEach(([id, k]) => {
+    const el = $(id);
+    if (!el) return;
+    el.textContent = msg || '';
+    el.className = k || '';
+  });
+}
+
+async function loadSettings() {
+  try {
+    const res = await fetch(baseUrl() + '/api/admin');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    fillSettings(await res.json());
+  } catch (e) {
+    setStat('Could not read settings: ' + e, 'warn');
+  }
+}
+
+async function saveSettings() {
+  setStat('saving…');
+  try {
+    const res = await fetch(baseUrl() + '/api/admin', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settingsPatch())
+    });
+    const body = await res.json();
+    if (!res.ok || !body.ok) throw new Error(body.message || ('HTTP ' + res.status));
+    fillSettings(body.admin);
+    setStat('Saved. Nothing is proven until a test alert arrives.', 'ok');
+    loadStatus();          // the "If something happens" cell just changed
+    return true;
+  } catch (e) {
+    setStat('NOT saved: ' + e, 'warn');
+    return false;
+  }
+}
+
+$('setupBtn').addEventListener('click', () => {
+  const opening = !setEl.classList.contains('open');
+  setEl.classList.toggle('open', opening);
+  if (opening) { setStat(''); loadSettings(); }
+});
+$('setSave').addEventListener('click', saveSettings);
+$('setSave2').addEventListener('click', saveSettings);
+$('setTest').addEventListener('click', async () => {
+  if (await saveSettings()) send('admin test', 'admin test');
+});
+
+loadStatus();
+$('ask').focus();
+</script>
+</body>
+</html>

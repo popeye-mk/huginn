@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=netdiag — Network Diagnostician
+Comment=Find out what is wrong with this computer's network
+Exec=sh -c "netdiag menu; echo; echo 'Press Enter to close'; read x"
+Icon=network-wired
+Terminal=true
+Categories=System;Network;Utility;

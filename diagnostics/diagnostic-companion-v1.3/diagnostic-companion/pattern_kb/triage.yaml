@@ -1,0 +1,41 @@
+# Symptom-driven triage profiles (spec §7).
+#
+# Real helpdesk starts from a complaint, not a machine. A profile maps
+# a symptom to: which collectors are worth running, and which rule ids
+# to weight to the top of the report when they fire.
+#
+# `collectors` is an allow-list, not a guarantee — a collector listed
+# here that auto-skips (no battery, not elevated) still reports as
+# skipped under "Not checked". Narrowing the run must never turn an
+# unchecked thing into an implied-healthy thing (§3.4).
+#
+# `weight` ids that never fire simply don't appear. Listing a rule here
+# does not make it more likely to match — only more prominent if it does.
+#
+# An unknown symptom falls back to a full `diag run` (§7), same
+# graceful-degradation principle as an unmatched log line.
+
+- symptom: slow
+  description: "Machine feels slow or unresponsive"
+  collectors: [system, disk, logs, smart]
+  weight: [disk_free_critical, disk_free_warning, smart_reallocated, high_error_log_volume]
+
+- symptom: no-internet
+  description: "No connectivity, or 'the internet is down'"
+  collectors: [network, wifi, system]
+  weight: [gateway_unreachable, dns_resolution_failing, wifi_weak]
+
+- symptom: crashes
+  description: "Applications or the machine itself crashing"
+  collectors: [logs, system, disk, smart]
+  weight: [smart_reallocated, high_error_log_volume, disk_free_critical]
+
+- symptom: battery
+  description: "Battery drains fast or won't hold charge"
+  collectors: [battery, system]
+  weight: [battery_health_low]
+
+- symptom: disk-full
+  description: "Out of space, or save/install failing"
+  collectors: [disk, logs, smart]
+  weight: [disk_free_critical, disk_free_warning, smart_reallocated]

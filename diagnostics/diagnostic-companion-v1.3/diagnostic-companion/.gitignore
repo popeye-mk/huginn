@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# Build artefacts. `build.py` produces all of these, and none belong in
+# git: dist/ holds a ~9MB platform-specific binary that must be rebuilt
+# per OS anyway (PyInstaller does not cross-compile), and version_info.txt
+# is generated from VERSION at build time.
+build/
+dist/
+version_info.txt
+
+# Local virtualenv, for building without touching the system Python.
+.venv/
+venv/
+
+# Written next to the capture script when run on a Windows machine.
+windows_capture_output.txt
+
+# Generated reports.
+report.html

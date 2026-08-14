@@ -1,0 +1,677 @@
+[
+  {
+    "id": "link_down",
+    "layer": "L1",
+    "severity": "critical",
+    "confidence": "certain",
+    "repro": "namespace",
+    "match": {
+      "link_up": false
+    },
+    "finding": "No network interface is up at all. Nothing above L1 can work until a link comes up.",
+    "next_step": "Check the cable/Wi-Fi toggle/airplane mode; verify the NIC is enabled.",
+    "for_user": "Your computer has no network connection at all right now — the cable or Wi-Fi link itself is down, not the internet. Once the connection light comes back, everything else should follow."
+  },
+  {
+    "id": "duplex_mismatch",
+    "layer": "L1",
+    "severity": "critical",
+    "confidence": "likely",
+    "repro": "hardware-only",
+    "match": {
+      "link_duplex": "half"
+    },
+    "finding": "Link is running half-duplex — almost certainly a bad cable or a forced/mismatched switch-port setting. This alone explains severe slowness and intermittent loss.",
+    "next_step": "Reseat/replace the cable; check the switch port's speed/duplex config; retest.",
+    "for_user": "The cable link between your computer and the network is running in a degraded mode, usually a cable or port problem. Replacing the cable or changing the port typically fixes the slowness and drop-outs."
+  },
+  {
+    "id": "link_errors",
+    "layer": "L1",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "hardware-only",
+    "match": {
+      "link_error_rate_pct_above": 1
+    },
+    "finding": "The NIC is counting hardware-level errors on more than 1% of packets — cabling, connector, or port fault at L1.",
+    "next_step": "Reseat/replace the cable; try another switch port; check for speed/duplex mismatch.",
+    "for_user": "The network card is seeing physical errors on the line — most often a damaged cable or loose connector. Swapping the cable is the quickest fix to try."
+  },
+  {
+    "id": "link_flap_history",
+    "layer": "L1",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "hardware-only",
+    "match": {
+      "link_flaps_24h_above": 5
+    },
+    "finding": "The link went down repeatedly in the last 24 hours (from the OS's own logs) — an intermittent fault caught retrospectively, without a long-running capture.",
+    "next_step": "Correlate flap times with activity (dock/undock, PoE load, backup jobs); check cable and switch port.",
+    "for_user": "Your network connection has been dropping and reconnecting repeatedly over the last day. This points to a loose cable, a failing port, or power interruptions rather than an internet problem."
+  },
+  {
+    "id": "wifi_weak_signal",
+    "layer": "L1",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "hardware-only",
+    "match": {
+      "wifi_signal_dbm_below": -75
+    },
+    "finding": "Wi-Fi signal is weak (below -75 dBm). Expect low PHY rates, retries, and periodic drops — this alone can explain 'the internet is slow'.",
+    "next_step": "Move closer to the AP / check AP placement; consider a survey of channel occupancy.",
+    "for_user": "The Wi-Fi signal where this computer sits is too weak for reliable use. Moving closer to the access point, or improving its placement, should stabilise things."
+  },
+  {
+    "id": "nic_power_saving",
+    "layer": "L1",
+    "severity": "info",
+    "confidence": "possible",
+    "repro": "hardware-only",
+    "match": {
+      "nic_power_saving": true
+    },
+    "finding": "Runtime power management may suspend the primary NIC when idle — the classic 'Wi-Fi drops when the laptop sits unused' cause.",
+    "next_step": "If idle drops are reported, disable power saving on the adapter and retest.",
+    "for_user": "This computer is allowed to put its network adapter to sleep to save power, which can cause the connection to drop when the machine sits idle. Turning that setting off usually cures idle drop-outs."
+  },
+  {
+    "id": "gateway_arp_unresolved",
+    "layer": "L2",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "namespace",
+    "match": {
+      "gateway_arp_state": "incomplete"
+    },
+    "finding": "The default gateway's MAC address cannot be resolved — L3 config points at a gateway that is not answering at L2 (wrong gateway IP, dead router, or VLAN mismatch).",
+    "next_step": "Verify the gateway IP is right for this VLAN; check the router; compare with a working machine's ARP table.",
+    "for_user": "Your computer cannot find the router it is told to use — the router is off, unreachable, or the network settings point at the wrong one. This is a local network problem, not the internet provider."
+  },
+  {
+    "id": "apipa_no_dhcp",
+    "layer": "L3",
+    "severity": "critical",
+    "confidence": "certain",
+    "repro": "namespace",
+    "match": {
+      "apipa_only": true
+    },
+    "finding": "The machine only has a 169.254.x.x self-assigned address: it asked for DHCP and no server answered. Everything beyond the local segment will fail.",
+    "next_step": "Check the DHCP server / VLAN / cable path to it; renew the lease once fixed.",
+    "for_user": "Your computer asked the network for an address and nothing answered, so it gave itself a temporary one that cannot reach anything. The device that hands out addresses (usually the router) needs attention."
+  },
+  {
+    "id": "no_default_route",
+    "layer": "L3",
+    "severity": "critical",
+    "confidence": "certain",
+    "repro": "namespace",
+    "match": {
+      "default_route_present": false,
+      "has_ipv4_global": true
+    },
+    "finding": "The machine has a real address but no default route — local subnet works, everything else is unreachable.",
+    "next_step": "Check DHCP option 3 / static gateway config; compare against a working machine.",
+    "for_user": "This computer has a network address but no route to the outside world configured. Things on the local network may work, but nothing beyond it will until the gateway setting is fixed."
+  },
+  {
+    "id": "default_route_conflict",
+    "layer": "L3",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "namespace",
+    "match": {
+      "default_route_conflict": true
+    },
+    "finding": "Multiple default routes exist on different interfaces (e.g. Wi-Fi and Ethernet both defaulting). Traffic may be leaving through the wrong, slower, or filtered path.",
+    "next_step": "Check interface metrics; disable the unintended uplink or fix the metric so the right one wins.",
+    "for_user": "This computer has two ways out of the network configured at once (for example Wi-Fi and cable together), and traffic may be taking the wrong one. Turning one of them off usually resolves the confusion."
+  },
+  {
+    "id": "gateway_unreachable",
+    "layer": "L3",
+    "severity": "critical",
+    "confidence": "likely",
+    "repro": "namespace",
+    "match": {
+      "gateway_reachable": false
+    },
+    "finding": "The default gateway does not answer ICMP echo. If ARP is also unresolved this is a dead/wrong gateway; if ARP resolves, the router may just drop ping (lower confidence).",
+    "next_step": "Check the router; verify the gateway IP; compare with another machine on the same segment.",
+    "for_user": "Your router is not responding to this computer. If other devices are also offline, restart the router; if only this machine is affected, its network settings need a look."
+  },
+  {
+    "id": "gateway_lossy",
+    "layer": "L3",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "netem",
+    "match": {
+      "gateway_reachable": true,
+      "gateway_loss_pct_above": 20
+    },
+    "finding": "Packet loss to the default gateway itself — the problem starts on the local segment (cable, Wi-Fi, switch port, or the router), not on the internet.",
+    "next_step": "Test from a second machine; check cabling/Wi-Fi signal; check switch/router port counters.",
+    "for_user": "The connection between this computer and your router is losing data. The problem is inside your local network — cable, Wi-Fi, or the router itself — not with your internet provider."
+  },
+  {
+    "id": "upstream_unreachable",
+    "layer": "L3",
+    "severity": "critical",
+    "confidence": "likely",
+    "repro": "namespace",
+    "match": {
+      "gateway_reachable": true,
+      "upstream_reachable": false
+    },
+    "finding": "LAN is fine (gateway answers) but nothing beyond it does — the WAN/ISP side is down. This machine and the local network are not the problem.",
+    "next_step": "Check the router's WAN status / modem; contact the ISP; nothing to fix on this machine.",
+    "for_user": "Your local network is fine — the problem starts beyond your router, on the internet provider's side. Nothing on this computer needs fixing; the provider or the modem is the place to look."
+  },
+  {
+    "id": "upstream_lossy",
+    "layer": "L3",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "netem",
+    "match": {
+      "upstream_loss_pct_above": 10,
+      "gateway_loss_pct_below": 5
+    },
+    "finding": "The gateway path is clean but the upstream path is dropping packets — 'the internet is bad, and it is not you or your LAN'. Seed of the blame-partition verdict (v1.1).",
+    "next_step": "Check the WAN link/modem stats; retest at another time; gather evidence for the ISP.",
+    "for_user": "Your equipment is working properly, but the internet connection beyond your router is losing data. This is evidence you can give your internet provider."
+  },
+  {
+    "id": "high_jitter",
+    "layer": "L3",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "netem",
+    "match": {
+      "upstream_jitter_ms_above": 30
+    },
+    "finding": "Latency to the upstream anchor is unstable (jitter above 30 ms) — calls and screen-shares will stutter even though pages load. Often bufferbloat under load.",
+    "next_step": "Retest while the line is idle vs. loaded; if it degrades under load, it's bufferbloat — SQM/QoS on the router is the fix.",
+    "for_user": "The internet connection's timing is unstable, which makes calls and video stutter even when pages load fine. It often improves when the line is less busy, or with quality settings on the router."
+  },
+  {
+    "id": "path_mtu_low",
+    "layer": "L3",
+    "severity": "warning",
+    "confidence": "possible",
+    "repro": "namespace",
+    "match": {
+      "path_mtu_below": 1400
+    },
+    "finding": "Path MTU toward the internet is below 1400 — typical of tunnels/PPPoE. If ICMP frag-needed is also blocked somewhere, large packets black-hole: chat works, screen-share dies.",
+    "next_step": "If large transfers hang, clamp MSS / lower interface MTU to match, or fix the ICMP filtering.",
+    "for_user": "The connection to the internet only accepts smaller-than-usual data packets, common with VPNs. If big transfers or screen sharing hang, a small settings change on the router or VPN fixes it."
+  },
+  {
+    "id": "ipv6_broken_dualstack",
+    "layer": "L3",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "namespace",
+    "match": {
+      "ipv6_global_present": true,
+      "ipv6_path_ok": false
+    },
+    "finding": "IPv6 is configured but the IPv6 path is dead. Dual-stack apps try v6 first, time out, then fall back — which feels exactly like 'slow internet' and is invisible to most checks.",
+    "next_step": "Fix the v6 route/RA config, or disable IPv6 on this network until it is actually routed.",
+    "for_user": "This network advertises a newer type of connectivity that doesn't actually work, so apps wait on it before falling back — which feels like slow internet. Disabling it, or fixing it, removes the delay."
+  },
+  {
+    "id": "vpn_full_tunnel",
+    "layer": "L3",
+    "severity": "info",
+    "confidence": "certain",
+    "repro": "namespace",
+    "match": {
+      "vpn_default_route": true
+    },
+    "finding": "All traffic is inside the VPN (full tunnel). Every network symptom on this machine is therefore a symptom of the VPN path first.",
+    "next_step": "Reproduce the problem with the VPN down (if policy allows) before blaming the local network.",
+    "for_user": "All of this computer's traffic currently goes through a VPN. Any network problem you see is most likely the VPN's, so test with it disconnected before blaming the local network."
+  },
+  {
+    "id": "vpn_debris",
+    "layer": "L3",
+    "severity": "info",
+    "confidence": "possible",
+    "repro": "namespace",
+    "match": {
+      "vpn_debris_count_above": 0
+    },
+    "finding": "Leftover tunnel adapter(s) are present but down — debris from a VPN client that may still own routes, DNS, or filter drivers. A classic silent connectivity killer after uninstalls.",
+    "next_step": "Remove orphaned adapters and stale routes/DNS entries of uninstalled VPN clients.",
+    "for_user": "Leftovers of an old VPN program are still present and can quietly interfere with the connection. Removing the old VPN's remnants is a safe clean-up."
+  },
+  {
+    "id": "high_retransmit_ratio",
+    "layer": "L4",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "netem",
+    "match": {
+      "tcp_retrans_pct_above": 5
+    },
+    "finding": "The kernel's own counters show more than 5% TCP retransmissions since boot — measured evidence of a lossy path, with zero capture privilege needed.",
+    "next_step": "Combine with the loss findings to locate the lossy segment (gateway vs upstream); retest after fixing L1/L3 findings.",
+    "for_user": "The computer is having to resend a noticeable share of what it transmits, which means data is getting lost on the way. This confirms a genuine line-quality problem rather than a software issue."
+  },
+  {
+    "id": "tcp_reset_storm",
+    "layer": "L4",
+    "severity": "info",
+    "confidence": "possible",
+    "repro": "hardware-only",
+    "match": {
+      "tcp_resets_per_1k_above": 100
+    },
+    "finding": "An unusually high share of outgoing TCP segments are resets — something on this machine or the path is tearing down connections (crashing service, middlebox, or port scans being answered).",
+    "next_step": "Identify the resetting process from the sockets list; check for an intercepting middlebox.",
+    "for_user": "Connections from this machine are being cut off unusually often. A crashing program or an interfering security device is the usual cause."
+  },
+  {
+    "id": "dns_resolution_failure",
+    "layer": "L7",
+    "severity": "critical",
+    "confidence": "likely",
+    "repro": "namespace",
+    "match": {
+      "dns_resolution_ok": false
+    },
+    "finding": "DNS resolution of a known-good name failed — 'the internet is down' while lower layers may be fine. If the gateway section is green, the problem is squarely the configured resolver.",
+    "next_step": "Check the configured DNS servers (listed in the snapshot); try a known-good resolver and compare.",
+    "for_user": "The internet connection itself may be fine, but the address-lookup service (DNS) is not answering, so websites can't be found by name. Pointing the computer at a working DNS server restores everything."
+  },
+  {
+    "id": "no_dns_servers",
+    "layer": "L7",
+    "severity": "critical",
+    "confidence": "certain",
+    "repro": "namespace",
+    "match": {
+      "dns_servers_count": 0
+    },
+    "finding": "No DNS servers are configured at all. Name resolution cannot work.",
+    "next_step": "Fix resolv.conf / DHCP option 6 / VPN DNS push.",
+    "for_user": "This computer has no address-lookup (DNS) servers configured at all, so it cannot find any website by name. Restoring the network's DNS settings fixes it."
+  },
+  {
+    "id": "dns_slow",
+    "layer": "L7",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "netem",
+    "match": {
+      "dns_resolution_ok": true,
+      "dns_latency_ms_above": 500
+    },
+    "finding": "Name resolution works but takes over half a second — every new connection pays this tax, which presents as 'everything is slow to start'.",
+    "next_step": "Check resolver health/order (a dead primary with a working secondary produces exactly this); try a known-good resolver.",
+    "for_user": "Every website lookup is taking unusually long before it even starts loading, which makes everything feel slow. A change of DNS server usually cures it."
+  },
+  {
+    "id": "dns_hijack",
+    "layer": "L7",
+    "severity": "critical",
+    "confidence": "likely",
+    "repro": "namespace",
+    "match": {
+      "dns_public_name_private_ip": true
+    },
+    "finding": "A known-good public name resolved to a private/LAN address — a captive portal or DNS hijack is rewriting answers.",
+    "next_step": "If a portal page appears in a browser, authenticate; otherwise treat the resolver as compromised/misconfigured.",
+    "for_user": "Website addresses are being answered incorrectly on this network — either a sign-in page is in the way, or the lookup service is misbehaving. Don't enter passwords on unexpected pages until this is resolved."
+  },
+  {
+    "id": "resolver_disagreement",
+    "layer": "L7",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "namespace",
+    "match": {
+      "resolvers_disagree": true
+    },
+    "finding": "The configured resolvers return different answers for the same name — split-DNS misconfiguration. Symptoms come and go depending on which resolver answers first.",
+    "next_step": "Diff the answers in the snapshot; align the resolvers or scope the internal zone correctly.",
+    "for_user": "The two address-lookup services this network uses give different answers for the same name, so things work or fail seemingly at random. Aligning the two servers ends the randomness."
+  },
+  {
+    "id": "hosts_file_override",
+    "layer": "L7",
+    "severity": "info",
+    "confidence": "possible",
+    "repro": "namespace",
+    "match": {
+      "hosts_override_count_above": 0
+    },
+    "finding": "The hosts file contains manual overrides — a stale entry here silently pins a name to a dead address and defeats every DNS fix ('we fixed DNS but this machine still fails').",
+    "next_step": "Review the listed entries; delete any that are stale or unexplained.",
+    "for_user": "This computer has manual address overrides saved on it, and a stale one can silently send a website or app to a dead address. Reviewing that list usually fixes the odd behaviour."
+  },
+  {
+    "id": "captive_portal",
+    "layer": "L7",
+    "severity": "critical",
+    "confidence": "certain",
+    "repro": "namespace",
+    "match": {
+      "captive_portal_detected": true
+    },
+    "finding": "The known-good HTTP 204 probe was intercepted — a captive portal or middlebox is between this machine and the internet. Nothing will work until it is satisfied.",
+    "next_step": "Open a browser and complete the portal login; on wired networks, check NAC/802.1X state.",
+    "for_user": "The network is holding your connection behind a sign-in page (like hotel or guest Wi-Fi). Open a browser, complete the sign-in, and everything else will start working."
+  },
+  {
+    "id": "proxy_unreachable",
+    "layer": "L7",
+    "severity": "critical",
+    "confidence": "likely",
+    "repro": "namespace",
+    "match": {
+      "proxy_configured": true,
+      "proxy_reachable": false
+    },
+    "finding": "A proxy is configured but not answering — apps that honour the proxy fail while ping and DNS look fine, which is why this one hides so well.",
+    "next_step": "Fix or remove the proxy setting; check whether the proxy host itself is down.",
+    "for_user": "This computer is set to send its traffic through an intermediary server that is not answering, so browsers fail while simple checks look fine. Fixing or removing that proxy setting restores browsing."
+  },
+  {
+    "id": "clock_skew",
+    "layer": "L7",
+    "severity": "critical",
+    "confidence": "likely",
+    "repro": "hardware-only",
+    "match": {
+      "ntp_offset_ms_above": 120000
+    },
+    "finding": "System clock is off by more than two minutes versus the time source. Kerberos/AD logins and TLS certificate checks fail in ways that report as network errors.",
+    "next_step": "Fix time sync (daemon config / firewall on UDP 123); verify Kerberos auth afterwards.",
+    "for_user": "This computer's clock is off by several minutes, which makes secure websites and company sign-ins fail in confusing ways. Correcting the clock (or its sync service) fixes those errors."
+  },
+  {
+    "id": "no_time_sync",
+    "layer": "L7",
+    "severity": "info",
+    "confidence": "possible",
+    "repro": "hardware-only",
+    "match": {
+      "time_sync_configured": false
+    },
+    "finding": "No time-sync daemon configuration was found. The clock will drift, and drift eventually breaks Kerberos and TLS in network-looking ways.",
+    "next_step": "Enable systemd-timesyncd/chrony (or the domain time source on AD members).",
+    "for_user": "This computer isn't set to keep its clock in sync automatically. Over time the drift breaks secure connections and sign-ins, so enabling time sync is a cheap preventive fix."
+  },
+  {
+    "id": "doh_bypass_active",
+    "layer": "L7",
+    "severity": "warning",
+    "confidence": "possible",
+    "repro": "namespace",
+    "match": {
+      "doh_connections_active": true
+    },
+    "finding": "Live connections to a public DoH resolver exist right now — a browser or app is resolving names over HTTPS, bypassing the OS resolver. 'We fixed DNS but the browser is still broken' starts here.",
+    "next_step": "Check browser DoH settings (Firefox TRR, Chrome Secure DNS); align them with the OS resolver or disable.",
+    "for_user": "A program on this computer (usually the web browser) is looking up website addresses through its own private channel instead of the network's normal one. That's why fixing the network's DNS didn't change what the browser sees — the browser's own setting needs adjusting."
+  },
+  {
+    "id": "browser_doh_enabled",
+    "layer": "L7",
+    "severity": "info",
+    "confidence": "possible",
+    "repro": "namespace",
+    "match": {
+      "browser_doh": "enabled"
+    },
+    "finding": "Firefox is configured to resolve over DoH (TRR mode 2/3) — its DNS answers can differ from the OS resolver's.",
+    "next_step": "If name-resolution symptoms differ between browser and system, this is why; align or disable TRR.",
+    "for_user": "The Firefox browser on this computer is set to do its own website-address lookups, separately from the rest of the system. This can make websites behave differently in Firefox than in other programs."
+  },
+  {
+    "id": "dnssec_not_validating",
+    "layer": "L7",
+    "severity": "info",
+    "confidence": "possible",
+    "repro": "namespace",
+    "match": {
+      "dnssec_validating": false
+    },
+    "finding": "The resolver in use does not validate DNSSEC (no AD flag on a known-signed zone). Forged DNS answers would not be detected.",
+    "next_step": "Acceptable on many networks; for security-sensitive sites, point at a validating resolver (e.g. the ISP's or 1.1.1.1).",
+    "for_user": "The address-lookup service this network uses doesn't verify the authenticity of its answers. Most networks run this way, but a verifying service is a worthwhile security upgrade."
+  },
+  {
+    "id": "pac_unusable",
+    "layer": "L7",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "namespace",
+    "match": {
+      "pac_url_configured": true,
+      "pac_valid": false
+    },
+    "finding": "Automatic proxy discovery (WPAD/PAC) is in play but the PAC file cannot be fetched or is not a valid PAC — browsers honouring it will fail or hang while direct connections look fine.",
+    "next_step": "Fix or remove the WPAD DNS entry / PAC URL; verify wpad.dat serves a real FindProxyForURL script.",
+    "for_user": "This network advertises automatic proxy settings, but the configuration file behind them is broken or unreachable. Browsers that follow it will struggle until that file is fixed or the advertisement removed."
+  },
+  {
+    "id": "tls_inspection_ca",
+    "layer": "L7",
+    "severity": "info",
+    "confidence": "likely",
+    "repro": "namespace",
+    "match": {
+      "tls_inspection_ca_suspected": true
+    },
+    "finding": "A TLS-inspection vendor's root CA is in the system trust store — an enterprise middlebox is re-signing HTTPS. Odd single-site TLS failures and cert warnings usually trace here.",
+    "next_step": "Expected on managed networks; for TLS errors on specific sites, check the middlebox's bypass list first.",
+    "for_user": "This computer's secure connections are being inspected by the company's security equipment (a normal enterprise practice). If one particular website keeps giving security errors here but works elsewhere, that equipment's settings are the place to look."
+  },
+  {
+    "id": "firewall_blocking_listeners",
+    "layer": "L4",
+    "severity": "warning",
+    "confidence": "possible",
+    "repro": "namespace",
+    "match": {
+      "firewall_blocked_listener_count_above": 0
+    },
+    "finding": "The local firewall's input policy is drop, and listening service ports have no visible accept rule — the service is up and bound, but the firewall is answering for it. Half of 'the app can't connect' is exactly this.",
+    "next_step": "Review the listed ports against the ruleset; add accepts for the ones that should be reachable.",
+    "for_user": "A program on this computer is running and waiting for connections, but this computer's own firewall appears to be blocking them. Allowing that program through the firewall should fix it."
+  },
+  {
+    "id": "wifi_channel_congested",
+    "layer": "L1",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "hardware-only",
+    "match": {
+      "wifi_cochannel_aps_above": 3
+    },
+    "finding": "More than three other access points share this Wi-Fi channel (from the supplicant's scan cache) — airtime contention will cause slowness and jitter even with strong signal.",
+    "next_step": "Move the AP to a cleaner channel (prefer 5/6 GHz); recheck with the occupancy counts in the snapshot.",
+    "for_user": "The Wi-Fi channel this network uses is crowded with neighbouring networks, and they all share the same airtime. Moving the router or access point to a less busy channel usually makes things noticeably faster."
+  },
+  {
+    "id": "dot1x_auth_failed",
+    "layer": "L2",
+    "severity": "critical",
+    "confidence": "likely",
+    "repro": "hardware-only",
+    "match": {
+      "dot1x_active": true,
+      "dot1x_eap_state": "FAILURE"
+    },
+    "finding": "802.1X/EAP authentication failed — the port/AP is rejecting this machine's credentials or certificate. Nothing above L2 can work until authentication succeeds.",
+    "next_step": "Check the machine's certificate/credentials and the RADIUS/NPS server's log for the reject reason.",
+    "for_user": "This network requires the computer itself to sign in before any traffic is allowed, and that sign-in is failing. The computer's network credentials or certificate need to be renewed or fixed — cables and routers are not the problem."
+  },
+  {
+    "id": "ad_dns_public_resolver",
+    "layer": "L7",
+    "severity": "critical",
+    "confidence": "certain",
+    "repro": "hardware-only",
+    "match": {
+      "dns_public_resolver_only": true,
+      "ad_srv_resolved": false
+    },
+    "finding": "This machine's DNS points only at public resolvers (8.8.8.8-class), which cannot resolve AD SRV records — it will never find the domain controller. The single most common cant-login cause.",
+    "next_step": "Point the client's DNS at the DC (or the AD-integrated DNS) and retest before touching anything else.",
+    "for_user": "This computer is asking the public internet for directions to your company's sign-in server, and the public internet has never heard of it. Pointing the computer's DNS at the company server fixes sign-in."
+  },
+  {
+    "id": "ad_dc_clock_skew",
+    "layer": "L7",
+    "severity": "critical",
+    "confidence": "likely",
+    "repro": "hardware-only",
+    "match": {
+      "ad_dc_clock_offset_ms_above": 300000
+    },
+    "finding": "This machine's clock is more than 5 minutes off from the domain controller's own clock — outside Kerberos tolerance. Every domain sign-in will fail with errors that look like network faults.",
+    "next_step": "Fix time sync against the domain hierarchy (w32tm /resync or chrony against the DC); verify sign-in afterwards.",
+    "for_user": "This computer's clock disagrees with the company server's clock by more than five minutes, and the sign-in system refuses to work across that gap for security reasons. Syncing the clock fixes sign-in."
+  },
+  {
+    "id": "ad_secure_channel_broken",
+    "layer": "L7",
+    "severity": "critical",
+    "confidence": "likely",
+    "repro": "hardware-only",
+    "match": {
+      "ad_secure_channel_ok": false,
+      "ad_secure_channel_verifiable": true
+    },
+    "finding": "The machine's secure channel to the domain is broken — the computer account's trust with AD has lapsed, and this was confirmed by a FRESH verification (not a cached session). DNS, ports and clock can all be perfect; sign-in still fails. Stop looking at the network.",
+    "next_step": "Reset the machine trust (Test-ComputerSecureChannel -Repair, or rejoin the domain); no network change will fix this.",
+    "for_user": "This computer's own membership of the company network has expired — like a badge that stopped working. Re-registering the computer with the domain (an admin task, a few minutes) fixes sign-in; the network itself is fine."
+  },
+  {
+    "id": "ad_dcs_unreachable",
+    "layer": "L3",
+    "severity": "critical",
+    "confidence": "likely",
+    "repro": "hardware-only",
+    "match": {
+      "ad_srv_resolved": true,
+      "ad_dcs_responding": 0
+    },
+    "finding": "DNS knows the domain controllers but none of them answer — DCs down, or a firewall/VLAN between this client and them.",
+    "next_step": "Check the DC(s) are up; verify the path (VLAN/firewall) between this subnet and the DC subnet.",
+    "for_user": "This computer knows where the company sign-in servers should be, but none of them are answering. The servers themselves, or the network path to them, need attention — not this computer."
+  },
+  {
+    "id": "print_spooler_stopped",
+    "layer": "L7",
+    "severity": "critical",
+    "confidence": "certain",
+    "repro": "hardware-only",
+    "match": {
+      "spooler_running": false
+    },
+    "finding": "The Windows Print Spooler service is stopped. Nothing can print from this machine regardless of the network, the printer, or the driver.",
+    "next_step": "Start the service (`sc start spooler`, or Services -> Print Spooler -> Start) and set it to Automatic; if it stops again, clear %SystemRoot%\\System32\\spool\\PRINTERS and check the Application event log.",
+    "for_user": "The part of Windows that handles printing has stopped running on this computer. Starting it again (or a restart) normally restores printing — the printer and the network are not the problem."
+  },
+  {
+    "id": "print_queue_jammed",
+    "layer": "L7",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "hardware-only",
+    "match": {
+      "print_jobs_errored_above": 0
+    },
+    "finding": "Print jobs are sitting in an error state in the local queue. New jobs queue behind them, so printing appears broken even when the printer and network are fine.",
+    "next_step": "Clear the stuck jobs (cancel all documents), then retry one page; if jobs re-enter error state, check the printer's own status (paper/toner/offline) and the driver.",
+    "for_user": "There are failed print jobs stuck in the queue on this computer, and everything you send now waits behind them. Cancelling those stuck documents and printing one test page usually clears it."
+  },
+  {
+    "id": "print_queue_stale",
+    "layer": "L7",
+    "severity": "warning",
+    "confidence": "possible",
+    "repro": "hardware-only",
+    "match": {
+      "print_jobs_stuck_15min_above": 0
+    },
+    "finding": "Jobs have been queued for over 15 minutes without printing — the queue is not draining, which points at the printer being offline/asleep or the spooler being wedged.",
+    "next_step": "Check the printer is on and reachable; cancel the oldest job and retry; restart the spooler if the queue still does not drain.",
+    "for_user": "Documents have been waiting in the print queue for a long time without coming out. The printer is likely off, asleep, or unreachable — check it, then cancel the old documents and try one page."
+  },
+  {
+    "id": "target_name_unresolved",
+    "layer": "L7",
+    "severity": "critical",
+    "confidence": "certain",
+    "repro": "namespace",
+    "match": {
+      "target_resolved": false
+    },
+    "finding": "The name you asked about does not resolve to any address, so nothing below DNS could even be attempted. Everything else in this walk is unmeasured, not healthy.",
+    "next_step": "Check the spelling; try the IP address instead of the name; if it is a local device, check the DNS suffix (short names often need the domain appended) or add it to DNS. `netdiag ref` lists the usual suspects.",
+    "for_user": "The computer cannot find anything by that name on the network. Usually the name is mistyped, or it needs the full name (like printer.corp.local instead of printer). Trying the device's IP address directly is the quickest way to tell."
+  },
+  {
+    "id": "hygiene_poisoning_surface",
+    "layer": "L7",
+    "severity": "warning",
+    "confidence": "likely",
+    "repro": "hardware-only",
+    "match": {
+      "hygiene_poisoning_exposed": true
+    },
+    "finding": "Name-resolution fallback protocols (LLMNR / NetBIOS-NS / mDNS) are enabled. Any machine on this LAN can answer a mistyped or unresolvable name and harvest the credentials the client offers — the classic Responder attack, and it needs no exploit.",
+    "next_step": "Disable LLMNR (GPO: Turn off multicast name resolution) and NetBIOS over TCP/IP on the adapters; leave mDNS only where printers/AirPrint need it. Verify DNS answers everything these were falling back for.",
+    "for_user": "This computer will ask the whole local network 'does anyone know this name?' when normal name lookup fails. On an untrusted network someone can answer that and capture your login details. Turning these old fallback protocols off is a standard hardening step."
+  },
+  {
+    "id": "hygiene_risky_listeners",
+    "layer": "L4",
+    "severity": "warning",
+    "confidence": "possible",
+    "repro": "namespace",
+    "match": {
+      "hygiene_risky_listener_count_above": 0
+    },
+    "finding": "This machine is listening on ports that are worth a second look — plaintext protocols, databases, or remote-access services. Exposure is not proof of a problem, but each of these should be intentional and reachable only from where it must be.",
+    "next_step": "Confirm each listener is intended; restrict it to the interfaces/subnets that need it in the local firewall; replace plaintext protocols (Telnet/FTP) with SSH/SFTP.",
+    "for_user": "This computer is offering some services to the network that are often left on by accident. It is not proof that anything is wrong, but each one is worth confirming that you meant to have it running."
+  },
+  {
+    "id": "hygiene_smb1_enabled",
+    "layer": "L7",
+    "severity": "critical",
+    "confidence": "certain",
+    "repro": "hardware-only",
+    "match": {
+      "hygiene_smb1_enabled": true
+    },
+    "finding": "SMBv1 is enabled. This is the protocol WannaCry and NotPetya spread over; it has no modern security properties and Microsoft removed it by default years ago.",
+    "next_step": "Disable SMBv1 (Windows: Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol; Samba: set 'server min protocol = SMB2_10' or higher) and confirm nothing legacy actually depended on it.",
+    "for_user": "This computer still has a very old file-sharing protocol switched on — the one used by some of the biggest ransomware outbreaks. It should be turned off unless something genuinely ancient needs it."
+  },
+  {
+    "id": "hygiene_rdp_without_nla",
+    "layer": "L7",
+    "severity": "warning",
+    "confidence": "certain",
+    "repro": "hardware-only",
+    "match": {
+      "hygiene_rdp_nla": false
+    },
+    "finding": "Remote Desktop accepts connections without Network Level Authentication, so a session is established before the user authenticates. That is both a brute-force amplifier and a denial-of-service surface.",
+    "next_step": "Enable NLA (System Properties → Remote → 'Allow connections only from computers running Remote Desktop with NLA'), and do not expose 3389 to untrusted networks at all.",
+    "for_user": "Remote Desktop on this computer lets people start a connection before proving who they are, which makes password guessing much easier. Switching on 'Network Level Authentication' is a one-tick fix."
+  }
+]

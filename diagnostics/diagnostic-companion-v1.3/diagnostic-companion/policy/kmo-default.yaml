@@ -1,0 +1,42 @@
+# Declarative compliance policy (spec §9).
+#
+# Per-machine baseline answers "what changed on this box?".
+# This answers "does every box meet our rules?" — versioned in git,
+# readable by someone who is not a programmer.
+#
+# Each rule is {path, op, value} against the same snapshot dot-paths the
+# pattern KB uses, so there is no second matching engine to maintain.
+#
+# THE IMPORTANT PART (§9): a rule whose collector didn't run reports
+# `unknown`, never `pass`. A compliance report that turns "I couldn't
+# check" into "compliant" is worse than no report at all.
+
+- rule: disk_space_available
+  description: "At least 15% free space on every volume"
+  match: { path: "disk.data.min_free_percent", op: at_least, value: 15 }
+  severity: critical
+
+- rule: error_log_volume_sane
+  description: "Fewer than 25 error-level log entries in the recent window"
+  match: { path: "logs.data.error_count", op: at_most, value: 25 }
+  severity: warning
+
+- rule: rebooted_recently
+  description: "Rebooted within the last 30 days so pending updates take effect"
+  match: { path: "system.data.uptime_days", op: at_most, value: 30 }
+  severity: warning
+
+- rule: dns_working
+  description: "DNS resolves known-good domains"
+  match: { path: "network.data.dns_any_failed", op: equals, value: false }
+  severity: critical
+
+- rule: gateway_reachable
+  description: "Default gateway responds"
+  match: { path: "network.data.gateway_ping.reachable", op: equals, value: true }
+  severity: critical
+
+- rule: disk_health_clean
+  description: "No reallocated sectors reported by SMART"
+  match: { path: "smart.data.any_reallocated", op: equals, value: false }
+  severity: critical

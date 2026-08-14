@@ -1,0 +1,316 @@
+{
+ "blame": {
+  "segments": [
+   {
+    "name": "This machine",
+    "status": "fail",
+    "confidence": "certain",
+    "evidence": "no network interface is up at all"
+   },
+   {
+    "name": "Your LAN",
+    "status": "unknown",
+    "evidence": "gateway path was not (fully) measured"
+   },
+   {
+    "name": "Your ISP / WAN",
+    "status": "unknown",
+    "evidence": "upstream path was not measured"
+   }
+  ],
+  "verdict": "the problem is this machine \u2014 no network interface is up at all."
+ },
+ "findings": [
+  {
+   "id": "link_down",
+   "layer": "L1",
+   "severity": "critical",
+   "confidence": "certain",
+   "finding": "No network interface is up at all. Nothing above L1 can work until a link comes up.",
+   "next_step": "Check the cable/Wi-Fi toggle/airplane mode; verify the NIC is enabled.",
+   "repro": "namespace",
+   "for_user": "Your computer has no network connection at all right now \u2014 the cable or Wi-Fi link itself is down, not the internet. Once the connection light comes back, everything else should follow.",
+   "match": {
+    "link_up": false
+   },
+   "evidence": {
+    "link_up": false
+   }
+  },
+  {
+   "id": "dns_resolution_failure",
+   "layer": "L7",
+   "severity": "critical",
+   "confidence": "likely",
+   "finding": "DNS resolution of a known-good name failed \u2014 'the internet is down' while lower layers may be fine. If the gateway section is green, the problem is squarely the configured resolver.",
+   "next_step": "Check the configured DNS servers (listed in the snapshot); try a known-good resolver and compare.",
+   "repro": "namespace",
+   "for_user": "The internet connection itself may be fine, but the address-lookup service (DNS) is not answering, so websites can't be found by name. Pointing the computer at a working DNS server restores everything.",
+   "match": {
+    "dns_resolution_ok": false
+   },
+   "evidence": {
+    "dns_resolution_ok": false
+   }
+  },
+  {
+   "id": "captive_portal",
+   "layer": "L7",
+   "severity": "critical",
+   "confidence": "certain",
+   "finding": "The known-good HTTP 204 probe was intercepted \u2014 a captive portal or middlebox is between this machine and the internet. Nothing will work until it is satisfied.",
+   "next_step": "Open a browser and complete the portal login; on wired networks, check NAC/802.1X state.",
+   "repro": "namespace",
+   "for_user": "The network is holding your connection behind a sign-in page (like hotel or guest Wi-Fi). Open a browser, complete the sign-in, and everything else will start working.",
+   "match": {
+    "captive_portal_detected": true
+   },
+   "evidence": {
+    "captive_portal_detected": true
+   }
+  },
+  {
+   "id": "hygiene_poisoning_surface",
+   "layer": "L7",
+   "severity": "warning",
+   "confidence": "likely",
+   "finding": "Name-resolution fallback protocols (LLMNR / NetBIOS-NS / mDNS) are enabled. Any machine on this LAN can answer a mistyped or unresolvable name and harvest the credentials the client offers \u2014 the classic Responder attack, and it needs no exploit.",
+   "next_step": "Disable LLMNR (GPO: Turn off multicast name resolution) and NetBIOS over TCP/IP on the adapters; leave mDNS only where printers/AirPrint need it. Verify DNS answers everything these were falling back for.",
+   "repro": "hardware-only",
+   "for_user": "This computer will ask the whole local network 'does anyone know this name?' when normal name lookup fails. On an untrusted network someone can answer that and capture your login details. Turning these old fallback protocols off is a standard hardening step.",
+   "match": {
+    "hygiene_poisoning_exposed": true
+   },
+   "evidence": {
+    "hygiene_poisoning_exposed": true
+   }
+  }
+ ],
+ "snapshot": {
+  "schema_version": "0.2.0",
+  "tool": "netdiag",
+  "tool_version": "0.9.25-v1.5",
+  "collected_at": "2026-07-20T21:46:04.938163786Z",
+  "hostname": "claude",
+  "os": "linux",
+  "collectors": {
+   "ad_state": {
+    "status": "ok",
+    "duration_ms": 0,
+    "privilege_level": "unprivileged",
+    "data": {
+     "ad_domain_joined": false
+    }
+   },
+   "addressing": {
+    "status": "ok",
+    "duration_ms": 0,
+    "privilege_level": "unprivileged",
+    "data": {
+     "apipa_only": false,
+     "dhcp_lease_found": true,
+     "dhcp_server": "10.0.2.2",
+     "has_ipv4_global": false,
+     "ipv4_addresses": null,
+     "ipv6_addresses": null
+    }
+   },
+   "captive_portal": {
+    "status": "ok",
+    "duration_ms": 14,
+    "privilege_level": "unprivileged",
+    "data": {
+     "captive_portal_detected": true,
+     "captive_probe_status": 403,
+     "captive_probe_url": "http://connectivitycheck.gstatic.com/generate_204"
+    }
+   },
+   "dns": {
+    "status": "ok",
+    "duration_ms": 1,
+    "privilege_level": "unprivileged",
+    "data": {
+     "dns_error": "lookup one.one.one.one on 127.0.0.53:53: read udp 127.0.0.1:57628->127.0.0.53:53: read: connection refused",
+     "dns_resolution_ok": false,
+     "dns_servers": [
+      "127.0.0.53"
+     ],
+     "dns_servers_count": 1
+    }
+   },
+   "dns_extra": {
+    "status": "ok",
+    "duration_ms": 1,
+    "privilege_level": "unprivileged",
+    "data": {
+     "browser_doh": "unknown",
+     "chrome_doh_policy": "unknown",
+     "dns_public_name_private_ip": false,
+     "dnssec_probe_name": "cloudflare.com",
+     "doh_connections_active": false,
+     "dot_connections_active": false,
+     "hosts_override_count": 0,
+     "resolver_answers": {
+      "127.0.0.53": [
+       "error: lookup one.one.one.one on 127.0.0.53:53: read udp 127.0.0.1:43006->127.0.0.53:53: read: connection refused"
+      ]
+     }
+    }
+   },
+   "event_history": {
+    "status": "skipped",
+    "reason": "neither journalctl nor /var/log/syslog is readable at this privilege",
+    "duration_ms": 6,
+    "privilege_level": "unprivileged"
+   },
+   "firewall": {
+    "status": "skipped",
+    "reason": "ruleset not readable unprivileged (elevated tier \u00a73.1) \u2014 firewall state is NOT green",
+    "duration_ms": 5,
+    "privilege_level": "elevated"
+   },
+   "gateway_ping": {
+    "status": "skipped",
+    "reason": "no default gateway to probe",
+    "duration_ms": 0,
+    "privilege_level": "unprivileged"
+   },
+   "hygiene": {
+    "status": "ok",
+    "duration_ms": 1,
+    "privilege_level": "unprivileged",
+    "data": {
+     "hygiene_poisoning_exposed": true,
+     "hygiene_poisoning_protocols": [
+      "LLMNR"
+     ],
+     "hygiene_risky_listener_count": 0
+    }
+   },
+   "ipv6": {
+    "status": "ok",
+    "duration_ms": 0,
+    "privilege_level": "unprivileged",
+    "data": {
+     "ipv6_default_route_present": false,
+     "ipv6_global_present": false
+    }
+   },
+   "link": {
+    "status": "ok",
+    "duration_ms": 0,
+    "privilege_level": "unprivileged",
+    "data": {
+     "dot1x_supplicant_present": false,
+     "link_interface_count": 0,
+     "link_interfaces": null,
+     "link_up": false
+    }
+   },
+   "neigh": {
+    "status": "ok",
+    "duration_ms": 0,
+    "privilege_level": "unprivileged",
+    "data": {
+     "gateway_arp_state": "absent",
+     "neigh_entry_count": 0
+    }
+   },
+   "net_quality": {
+    "status": "skipped",
+    "reason": "no default route \u2014 no path to measure",
+    "duration_ms": 0,
+    "privilege_level": "unprivileged"
+   },
+   "nic_power": {
+    "status": "ok",
+    "duration_ms": 0,
+    "privilege_level": "unprivileged"
+   },
+   "proxy": {
+    "status": "ok",
+    "duration_ms": 4,
+    "privilege_level": "unprivileged",
+    "data": {
+     "proxy_configured": true,
+     "proxy_reachable": true,
+     "proxy_url": "http://localhost:3128",
+     "tls_inspection_ca_suspected": false,
+     "wpad_resolvable": false
+    }
+   },
+   "routing": {
+    "status": "ok",
+    "duration_ms": 0,
+    "privilege_level": "unprivileged",
+    "data": {
+     "default_route_conflict": false,
+     "default_route_count": 0,
+     "default_route_present": false,
+     "gateway_interface": "",
+     "gateway_ip": "",
+     "route_table_size": 0
+    }
+   },
+   "sockets": {
+    "status": "ok",
+    "duration_ms": 1,
+    "privilege_level": "unprivileged",
+    "data": {
+     "listening_ports": [
+      "3128",
+      "1080"
+     ],
+     "sockets_established": 0,
+     "sockets_listening": 2,
+     "sockets_time_wait": 0,
+     "sockets_udp": 0
+    }
+   },
+   "tcp_stats": {
+    "status": "ok",
+    "duration_ms": 0,
+    "privilege_level": "unprivileged",
+    "data": {
+     "tcp_attempt_fails": 0,
+     "tcp_estab_resets": 0,
+     "tcp_listen_drops": 0,
+     "tcp_out_segs": 0,
+     "tcp_resets_out": 0,
+     "tcp_retrans_segs": 0,
+     "tcp_syn_retrans": 0
+    }
+   },
+   "time_sync": {
+    "status": "ok",
+    "duration_ms": 0,
+    "privilege_level": "unprivileged",
+    "data": {
+     "ntp_error": "dial udp: lookup pool.ntp.org on 127.0.0.53:53: read udp 127.0.0.1:57888->127.0.0.53:53: read: connection refused",
+     "ntp_query_ok": false,
+     "time_sync_configured": true,
+     "time_sync_daemon": "systemd-timesyncd"
+    }
+   },
+   "vpn": {
+    "status": "ok",
+    "duration_ms": 0,
+    "privilege_level": "unprivileged",
+    "data": {
+     "vpn_active": false,
+     "vpn_debris_count": 0,
+     "vpn_default_route": false,
+     "vpn_interface_count": 0
+    }
+   },
+   "wifi": {
+    "status": "ok",
+    "duration_ms": 0,
+    "privilege_level": "unprivileged",
+    "data": {
+     "wifi_present": false
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,254 @@
+# Knowledge base (spec §6, §12).
+#
+# match.path is a dot path into snapshot["sections"], e.g.
+# "disk.data.min_free_percent" reads sections.disk.data.min_free_percent.
+# A rule is only evaluated if that section's status is "ok" — an absent
+# or skipped collector can never produce a finding (spec §3.4).
+#
+# Every threshold carries a comment saying where the number came from.
+# "disk_free < 10%" is a judgement call, not a law of nature, and the
+# next person to touch it deserves to know what it was based on so they
+# can argue with it (§12.3). `diag kb lint` enforces this.
+#
+# Every rule carries provenance (§12.1). A `source: ticket` rule with no
+# reviewer is quarantined: confidence must be `possible`, so it renders
+# under "worth checking" and can never headline a report until a human
+# has promoted it. `diag kb lint` enforces that too.
+
+# --- disk ------------------------------------------------------------
+
+- id: disk_free_critical
+  # 10%: below this, ext4/NTFS fragmentation and failed writes start
+  # for real, and Windows Update needs ~8GB free to stage an upgrade.
+  match: { path: "disk.data.min_free_percent", op: below, value: 10 }
+  finding: "Disk space critically low ({value}% free on at least one volume)."
+  severity: critical
+  confidence: certain
+  next_step: "Clear space now (logs, temp files) or expand the volume before it fills."
+  supersedes: [disk_free_warning]
+  # `fix` names a key in fixes.COMMAND_WHITELIST — never a command string.
+  # A KB edit can point at a different whitelisted command; it can never
+  # introduce a new one (spec §13, §14.3).
+  fix: vacuum_journal
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-18, reviewed_by: popeye-mk }
+
+- id: disk_free_warning
+  # 20%: the point where "it's fine" becomes "watch it" — roughly one
+  # OS upgrade cycle of headroom on a typical 256GB laptop volume.
+  match: { path: "disk.data.min_free_percent", op: below, value: 20 }
+  finding: "Disk space getting low ({value}% free on at least one volume)."
+  severity: warning
+  confidence: certain
+  next_step: "Worth a look before it becomes critical."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-18, reviewed_by: popeye-mk }
+
+# --- network ---------------------------------------------------------
+
+- id: dns_resolution_failing
+  match: { path: "network.data.dns_any_failed", op: equals, value: true }
+  finding: "DNS resolution is failing for one or more known-good domains."
+  severity: critical
+  confidence: certain
+  next_step: "Check DNS server reachability and /etc/resolv.conf."
+  fix: flush_dns
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-18, reviewed_by: popeye-mk }
+
+- id: gateway_unreachable
+  match: { path: "network.data.gateway_ping.reachable", op: equals, value: false }
+  finding: "Default gateway is not responding to ping."
+  severity: critical
+  confidence: certain
+  next_step: "Check the local network link and gateway device before anything else."
+  fix: renew_dhcp   # risk: medium -> advice-only, never auto-applied
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-18, reviewed_by: popeye-mk }
+
+- id: no_default_gateway
+  match: { path: "network.data.gateway", op: equals, value: null }
+  finding: "No default gateway is configured."
+  severity: critical
+  confidence: certain
+  next_step: "The machine has no route off its own subnet — check DHCP, or a static config that lost its gateway line."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-20, reviewed_by: popeye-mk }
+
+- id: internet_unreachable
+  match: { path: "network.data.public_ping.reachable", op: equals, value: false }
+  finding: "Cannot reach the public internet (1.1.1.1 does not respond)."
+  severity: warning
+  confidence: likely
+  next_step: "If the gateway is reachable but this is not, the problem is upstream of this machine — ISP, firewall, or a captive portal."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-20, reviewed_by: popeye-mk }
+
+# --- logs ------------------------------------------------------------
+
+- id: high_error_log_volume
+  # 30. Raised from an original guess of 10 after measuring a healthy
+  # Ubuntu 22.04 laptop, which reported 20 errors in a normal boot: a
+  # secure-boot X.509 message, bluetoothd's sap-server refusal, a
+  # libvirt storage-pool autostart failure, gkr-pam and gdm3 assertions.
+  # All benign boot noise. At 10 the rule fired on every healthy Linux
+  # desktop, which is worse than not having it — a warning everyone
+  # learns to ignore trains people to ignore the real ones.
+  # Windows sits far lower (7 on a comparable idle machine), so this
+  # threshold is set by the noisier platform.
+  match: { path: "logs.data.error_count", op: above, value: 30 }
+  finding: "Unusually high number of error-level log entries recently ({value})."
+  severity: warning
+  confidence: likely
+  next_step: "Review the log entries for a repeating source before it becomes a crash."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-18, reviewed_by: popeye-mk }
+
+- id: severe_error_log_volume
+  # 100: an order of magnitude above the warning threshold. At this rate
+  # something is failing in a loop, not intermittently.
+  match: { path: "logs.data.error_count", op: above, value: 100 }
+  finding: "Very high volume of error-level log entries ({value}) — something is failing repeatedly."
+  severity: critical
+  confidence: likely
+  next_step: "Find the repeating source now; this rate usually means a service is crash-looping."
+  supersedes: [high_error_log_volume]
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-20, reviewed_by: popeye-mk }
+
+# --- system ----------------------------------------------------------
+
+- id: system_uptime_excessive
+  # 30 days: roughly one patch cycle. Long uptime is not itself a fault,
+  # which is why this is `possible` and not a warning about the machine.
+  match: { path: "system.data.uptime_days", op: above, value: 30 }
+  finding: "System has not rebooted in {value} days."
+  severity: warning
+  confidence: possible
+  next_step: "Long uptime alone isn't a problem, but it delays pending kernel/security updates from taking effect."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-18, reviewed_by: popeye-mk }
+
+- id: memory_pressure_high
+  # 90%: below this, cache eviction handles it. Above, the machine is
+  # into swap and the user feels it.
+  match: { path: "system.data.mem_used_percent", op: above, value: 90 }
+  finding: "Memory usage is very high ({value}% of physical RAM in use)."
+  severity: warning
+  confidence: likely
+  next_step: "Check for a runaway process; sustained pressure this high means swapping, which is what 'slow' usually feels like."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-20, reviewed_by: popeye-mk }
+
+- id: load_average_high
+  # 8.0: a deliberately blunt absolute threshold. The correct comparison
+  # is load vs. core count, which the system collector does not report
+  # yet — hence `possible` confidence rather than a claim of a problem.
+  match: { path: "system.data.load_avg_5m", op: above, value: 8.0 }
+  finding: "5-minute load average is high ({value})."
+  severity: warning
+  confidence: possible
+  next_step: "Compare against the core count before acting — a load of 8 is normal on a 16-core box and severe on a dual-core."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-20, reviewed_by: popeye-mk }
+
+# --- optional collectors (spec §4.2) ---------------------------------
+# Only ever evaluated when the owning collector actually ran (elevated,
+# and the relevant hardware present).
+
+- id: smart_reallocated
+  match: { path: "smart.data.any_reallocated", op: equals, value: true }
+  finding: "Disk reporting reallocated sectors — early sign of drive failure."
+  severity: critical
+  confidence: certain
+  next_step: "Back up now, plan replacement. This does not wait."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-18, reviewed_by: popeye-mk }
+
+- id: smart_pending_sectors
+  # 0: any pending sector at all is abnormal. This is not a tuned
+  # threshold — it is the absence of one.
+  match: { path: "smart.data.max_pending_sectors", op: above, value: 0 }
+  finding: "Disk has {value} pending sector(s) awaiting reallocation."
+  severity: warning
+  confidence: likely
+  next_step: "Pending sectors often become reallocated ones. Back up, then watch this number over the next week."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-20, reviewed_by: popeye-mk }
+
+- id: nvme_spare_low
+  # No threshold of our own. NVMe drives remap failing blocks from a
+  # spare pool and each drive publishes the level at which it considers
+  # that pool exhausted — a real Acer laptop reports 5% where 10% is
+  # commonly quoted. The collector compares against the drive's own
+  # figure and reports a boolean, so this rule cannot second-guess the
+  # hardware about its own health.
+  match: { path: "smart.data.any_spare_below_threshold", op: equals, value: true }
+  finding: "Solid-state drive has fallen below its own spare-block threshold."
+  severity: critical
+  confidence: certain
+  next_step: "The drive is remapping failures faster than it can absorb them. Back up now and plan replacement."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-20, reviewed_by: popeye-mk }
+
+- id: nvme_wear_high
+  # 90% of rated endurance. Past 100% the drive is beyond its warranty
+  # write budget; it does not fail at that instant, but it is no longer
+  # a drive to keep the only copy of anything on.
+  match: { path: "smart.data.max_wear_percent", op: above, value: 90 }
+  finding: "Solid-state drive is at {value}% of its rated write endurance."
+  severity: warning
+  confidence: certain
+  next_step: "Not an immediate failure, but plan replacement — this drive is near the end of its designed write life."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-20, reviewed_by: popeye-mk }
+
+- id: unsafe_shutdown_rate_high
+  # 0.10 — more than one boot in ten ending without a clean flush.
+  # Measured against a real Acer laptop reporting 95 unsafe shutdowns
+  # across 708 power cycles (0.134), which is where the number comes
+  # from: high enough to be worth mentioning, not so low that the
+  # occasional crash trips it. The collector suppresses the ratio
+  # entirely below 50 power cycles, so a nearly-new machine cannot
+  # produce a misleading figure.
+  #
+  # Deliberately `possible`: unsafe shutdowns are a symptom with several
+  # unrelated causes (forced power-off, crashes, a failing PSU, a
+  # dodgy sleep implementation) and this rule cannot distinguish them.
+  # It never headlines a report — it appears under "worth checking".
+  match: { path: "smart.data.max_unsafe_shutdown_ratio", op: above, value: 0.10 }
+  finding: "Drive reports frequent unclean shutdowns ({value} of all power cycles)."
+  severity: warning
+  confidence: possible
+  next_step: "Data loss risk on the next one. Check whether the machine is being force-powered-off, crashing, or failing to wake from sleep cleanly."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-20, reviewed_by: popeye-mk }
+
+- id: nvme_over_temperature
+  # No threshold of our own: every NVMe drive publishes its own warning
+  # composite temperature (83 C on a Crucial P3, vendors differ). The
+  # collector compares against that and reports a boolean, for the same
+  # reason as the spare-block rule — the drive knows its limits better
+  # than the rule author does.
+  match: { path: "smart.data.any_over_temperature", op: equals, value: true }
+  finding: "Solid-state drive is at or above its own warning temperature."
+  severity: warning
+  confidence: certain
+  next_step: "Sustained heat shortens flash life and triggers throttling. Check airflow, vents and whether the machine is running hot under load."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-20, reviewed_by: popeye-mk }
+
+- id: battery_health_low
+  # 50% of design capacity: the point where most vendors consider a
+  # battery consumed and warranty replacement thresholds sit (~50-60%).
+  match: { path: "battery.data.min_health_percent", op: below, value: 50 }
+  finding: "Battery health has degraded to {value}% of design capacity."
+  severity: warning
+  confidence: certain
+  next_step: "Expect shrinking runtime; plan a battery replacement, not a full device swap."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-18, reviewed_by: popeye-mk }
+
+- id: battery_health_critical
+  # 30%: runtime is now short enough that the machine is effectively
+  # desk-bound, which is a different conversation than "degraded".
+  match: { path: "battery.data.min_health_percent", op: below, value: 30 }
+  finding: "Battery is effectively worn out ({value}% of design capacity)."
+  severity: critical
+  confidence: certain
+  next_step: "This machine is desk-bound until the battery is replaced. Expect sudden shutdowns under load."
+  supersedes: [battery_health_low]
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-20, reviewed_by: popeye-mk }
+
+- id: wifi_weak
+  # 30 (of /70 in the Linux wireless stack's scale): below this,
+  # retransmits dominate and throughput collapses well before the
+  # connection actually drops.
+  match: { path: "wifi.data.min_link_quality", op: below, value: 30 }
+  finding: "Wi-Fi link quality is weak ({value})."
+  severity: warning
+  confidence: likely
+  next_step: "Move closer to the access point or check for interference before assuming 'the internet is slow'."
+  provenance: { source: seed, author: popeye-mk, created: 2026-07-18, reviewed_by: popeye-mk }

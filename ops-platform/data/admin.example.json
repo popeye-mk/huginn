@@ -1,0 +1,31 @@
+{
+  "_comment": "Copy to data/admin.json (gitignored) and edit. This file is the registered administrator: who Huginn tells when the guard finds something. Nothing here is secret EXCEPT ntfy.topic — treat that like a password, since anyone who knows it receives your alerts. The SMTP password is NOT stored here; it comes from $HUGINN_SMTP_PASSWORD or data/secrets/smtp.key.",
+
+  "name": "alex",
+  "min_severity": "warning",
+
+  "_quiet_hours": "Local hours, wraps midnight. Holds WARNINGS only — a critical alert always delivers, because 04:00 is exactly when an ARP-spoofed gateway matters most. Set both to null to disable.",
+  "quiet_hours": { "start": null, "end": null },
+
+  "desktop": { "enabled": true },
+
+  "_ntfy": "Push to a phone. No password stored. Install the ntfy app, subscribe to your topic, and pick a LONG random topic name — it is the only thing protecting it.",
+  "ntfy": {
+    "enabled": false,
+    "topic": "",
+    "server": "https://ntfy.sh",
+    "allow_insecure": false
+  },
+
+  "_email": "Archivable, but stores a password on this machine. Prefer ntfy unless you specifically want mail.",
+  "email": {
+    "enabled": false,
+    "host": "",
+    "port": 587,
+    "to": "",
+    "from": "",
+    "username": "",
+    "password_env": "HUGINN_SMTP_PASSWORD",
+    "password_file": "data/secrets/smtp.key"
+  }
+}

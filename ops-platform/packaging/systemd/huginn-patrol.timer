@@ -1,0 +1,27 @@
+[Unit]
+Description=Run the Huginn Network Guard patrol hourly
+
+[Timer]
+# HOURLY is an opening position, not a default -- recorded as such in
+# NEXT-CHAPTER.md item 1. The reasoning: a spoofing or rogue-DHCP episode
+# that begins and ends inside one hour is rare, and a quiet pass costs
+# nothing (append_events writes only CHANGE findings, and the journal
+# self-trims at 4000 lines), so the usual argument against frequent runs --
+# log bloat -- does not apply here. Revisit after two weeks of real data,
+# not before.
+#
+# OnBootSec is 5min, deliberately AFTER huginn-triage's 2min: the two units
+# write different files (patrol -> data/census/*.json, triage -> the findings
+# store), so they do not truly conflict, but staggering them keeps a
+# freshly-woken laptop from doing both at once.
+#
+# Persistent=true matters more here than for triage: this is a laptop that
+# sleeps, and a guard that silently skips every missed window while closed
+# is a guard with a hole in it. A missed patrol runs at the next wake.
+OnBootSec=5min
+OnUnitActiveSec=1h
+RandomizedDelaySec=4min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

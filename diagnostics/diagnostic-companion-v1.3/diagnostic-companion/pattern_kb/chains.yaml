@@ -1,0 +1,26 @@
+# Root-cause chains (spec §14.1): link findings that explain each other
+# into one story instead of a flat symptom list. A chain only fires
+# when every member in `when` is present among the certain/likely
+# findings — possible-confidence findings are structurally excluded
+# already (they never reach the findings list, see interpreter.evaluate).
+# Incomplete evidence -> no chain -> flat list. No narrative is invented.
+
+- id: dying_disk_chain
+  when: [disk_free_critical, high_error_log_volume]
+  root: disk_free_critical
+  confidence: likely
+  story: >
+    Disk space is critically low, alongside an unusually high volume of
+    error-level log entries. A full disk is a common root cause of
+    cascading service errors — fix the disk space first; the log
+    errors likely resolve themselves once it does.
+
+- id: network_link_down_chain
+  when: [gateway_unreachable, dns_resolution_failing]
+  root: gateway_unreachable
+  confidence: likely
+  story: >
+    DNS resolution is failing because the gateway itself isn't
+    responding to ping. This points to a link-layer or gateway problem,
+    not a broken DNS server — fix the path to the gateway first and
+    DNS will likely resolve itself.

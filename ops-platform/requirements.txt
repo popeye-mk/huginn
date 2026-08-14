@@ -1,0 +1,40 @@
+# Huginn dependencies — there are none.
+#
+# The platform runs on the Python standard library alone: contracts,
+# platform_support, engines, domains, agents, skills, storage and the native
+# runtime shell. No pip install, no virtualenv, no wheels. Verified, not
+# claimed — the whole platform imports with every third-party package blocked
+# (see the check in `tools/codebase_health.py`'s sibling notes and the
+# 2026-07-26 entry in LONG-TERM.md).
+#
+# That is not an accident: an "agentless, lightweight" tool that opens with a
+# dependency tree has contradicted its own pitch on the first line.
+#
+# This file listed ten packages until 2026-07-26 — sentence-transformers,
+# faiss, numpy, requests, httpx, cryptography, pypdf, python-docx,
+# python-pptx, openpyxl and friends. Every one of them belonged to the
+# vendored Anora fork and its answering path, both of which are now archived
+# (`../attic/anora-fork-20260726/`). Leaving them listed would have made the
+# zero-dependency claim untrue on the one file people check first.
+
+# --- Optional, and only ever optional -------------------------------------
+#
+# numpy — used by semantic findings-recall (`storage/findings_recall.py`).
+# Absent, recall degrades to substring matching AND SAYS SO, which is the
+# behaviour the platform is built around: a check that could not run is
+# reported, never silently downgraded. Install it only if you want semantic
+# recall over operational history.
+#
+#     pip install numpy
+#
+# --- External tools (not Python dependencies) -----------------------------
+#
+# These are programs the engines shell out to when present, and report as
+# "not available — not an all-clear" when absent. None is required to run:
+#
+#   Diagnostic Companion   host diagnostics   (needs PyYAML in ITS OWN env)
+#   netdiag                network checks
+#   restic                 backup verification
+#   nmap                   faster LAN sweep + port scan (falls back to sockets)
+#   avahi-resolve/nmblookup  device-name probes
+#   tesseract              retired with the answering path; no longer used

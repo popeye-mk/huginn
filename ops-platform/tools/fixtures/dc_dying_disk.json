@@ -1,0 +1,126 @@
+{
+ "anonymized": false,
+ "snapshot": {
+  "schema_version": "0.1.0",
+  "collected_at": "2026-07-20T09:05:00+00:00",
+  "hostname": "web-02",
+  "os": "linux",
+  "sections": {
+   "system": {
+    "status": "ok",
+    "reason": null,
+    "duration_ms": 4,
+    "privilege_level": "unprivileged",
+    "data": {
+     "uptime_days": 45.0,
+     "mem_used_percent": 60.0
+    }
+   },
+   "network": {
+    "status": "ok",
+    "reason": null,
+    "duration_ms": 12,
+    "privilege_level": "unprivileged",
+    "data": {
+     "dns_any_failed": false,
+     "gateway_ping": {
+      "target": "192.168.1.1",
+      "reachable": true
+     }
+    }
+   },
+   "disk": {
+    "status": "ok",
+    "reason": null,
+    "duration_ms": 3,
+    "privilege_level": "unprivileged",
+    "data": {
+     "min_free_percent": 4.0
+    }
+   },
+   "logs": {
+    "status": "ok",
+    "reason": null,
+    "duration_ms": 20,
+    "privilege_level": "unprivileged",
+    "data": {
+     "error_count": 34
+    }
+   }
+  }
+ },
+ "findings": [
+  {
+   "id": "disk_free_critical",
+   "collector": "disk",
+   "finding": "Disk space critically low (4.0% free on at least one volume).",
+   "severity": "critical",
+   "confidence": "certain",
+   "next_step": "Clear space now (logs, temp files) or expand the volume before it fills."
+  },
+  {
+   "id": "high_error_log_volume",
+   "collector": "logs",
+   "finding": "Unusually high number of error-level log entries recently (34).",
+   "severity": "warning",
+   "confidence": "likely",
+   "next_step": "Review the log entries for a repeating source before it becomes a crash."
+  }
+ ],
+ "chains": [
+  {
+   "type": "chain",
+   "id": "dying_disk_chain",
+   "story": "Disk space is critically low, alongside an unusually high volume of error-level log entries. A full disk is a common root cause of cascading service errors \u2014 fix the disk space first; the log errors likely resolve themselves once it does.",
+   "root": "disk_free_critical",
+   "confidence": "likely",
+   "members": [
+    "disk_free_critical",
+    "high_error_log_volume"
+   ],
+   "collectors": [
+    "disk",
+    "logs"
+   ]
+  }
+ ],
+ "worth_checking": [
+  {
+   "id": "system_uptime_excessive",
+   "collector": "system",
+   "finding": "System has not rebooted in 45.0 days.",
+   "severity": "warning",
+   "confidence": "possible",
+   "next_step": "Long uptime alone isn't a problem, but it delays pending kernel/security updates from taking effect."
+  }
+ ],
+ "verdict": {
+  "level": "critical",
+  "headline": "One underlying problem explains several symptoms",
+  "detail": "Disk space is critically low, alongside an unusually high volume of error-level log entries. A full disk is a common root cause of cascading service errors \u2014 fix the disk space first; the log errors likely resolve themselves once it does.",
+  "action": "Clear space now (logs, temp files) or expand the volume before it fills.",
+  "coverage_caveat": null
+ },
+ "health_score": {
+  "hostname": "web-02",
+  "score": 67,
+  "deductions": [
+   {
+    "id": "disk_free_critical",
+    "amount": 25,
+    "reason": "Disk space critically low (4.0% free on at least one volume)."
+   },
+   {
+    "id": "high_error_log_volume",
+    "amount": 8,
+    "reason": "Unusually high number of error-level log entries recently (34)."
+   }
+  ],
+  "checked": 4,
+  "total": 4,
+  "coverage": "4/4 checked",
+  "top_finding": "Disk space critically low (4.0% free on at least one volume)."
+ },
+ "decoded_codes": [],
+ "diff": null
+}

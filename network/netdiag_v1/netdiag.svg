@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b3a55"/>
+      <stop offset="1" stop-color="#1b2438"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="26" fill="url(#bg)"/>
+
+  <!-- the three segments of the blame partition: machine, LAN, WAN -->
+  <g stroke="#5aa9e6" stroke-width="4" fill="none" stroke-linecap="round">
+    <path d="M30 92 L30 74 L64 74 L64 56"/>
+    <path d="M98 92 L98 74 L64 74"/>
+  </g>
+  <g fill="#5aa9e6">
+    <rect x="20" y="92" width="20" height="14" rx="3"/>
+    <rect x="88" y="92" width="20" height="14" rx="3"/>
+  </g>
+
+  <!-- the verdict: a magnifier over the top segment, because the product is
+       the sentence it produces, not the packet capture -->
+  <circle cx="64" cy="42" r="20" fill="none" stroke="#8fd694" stroke-width="6"/>
+  <path d="M78 56 L92 70" stroke="#8fd694" stroke-width="7" stroke-linecap="round"/>
+  <path d="M55 42 L61 49 L74 35" fill="none" stroke="#8fd694" stroke-width="5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

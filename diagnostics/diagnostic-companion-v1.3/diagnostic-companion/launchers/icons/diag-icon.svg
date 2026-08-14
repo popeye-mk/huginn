@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Desktop icon. A drive platter with a health tick, deliberately
+     unlike a network-themed icon so it is distinguishable at a glance
+     from other diagnostic tools sitting on the same desktop.
+     No text: unreadable at 32px and untranslatable. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f3a4a"/>
+      <stop offset="1" stop-color="#1a212c"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="8" y="8" width="112" height="112" rx="24" fill="url(#g)"/>
+  <rect x="8" y="8" width="112" height="112" rx="24" fill="none"
+        stroke="#4a90d9" stroke-width="4"/>
+
+  <circle cx="64" cy="60" r="34" fill="none" stroke="#4a90d9" stroke-width="5"/>
+  <circle cx="64" cy="60" r="20" fill="none" stroke="#4a90d9"
+          stroke-width="3" opacity="0.55"/>
+  <circle cx="64" cy="60" r="6" fill="#4a90d9"/>
+
+  <path d="M46 62 l12 12 l24 -26" fill="none" stroke="#3ecf8e"
+        stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="40" y="102" width="48" height="7" rx="3.5" fill="#4a90d9" opacity="0.75"/>
+</svg>

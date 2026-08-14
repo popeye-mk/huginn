@@ -1,0 +1,97 @@
+{
+  "schema_version": "0.1.0",
+  "collected_at": "2026-07-20T12:30:00+00:00",
+  "hostname": "lt-13",
+  "os": "linux",
+  "sections": {
+    "system": {
+      "status": "ok",
+      "reason": null,
+      "duration_ms": 4,
+      "privilege_level": "unprivileged",
+      "data": {
+        "uptime_days": 1.0,
+        "mem_used_percent": 40.0,
+        "load_avg_5m": 0.6
+      }
+    },
+    "network": {
+      "status": "ok",
+      "reason": null,
+      "duration_ms": 12,
+      "privilege_level": "unprivileged",
+      "data": {
+        "gateway": "192.168.1.1",
+        "dns_any_failed": false,
+        "gateway_ping": {
+          "target": "192.168.1.1",
+          "reachable": true
+        },
+        "public_ping": {
+          "target": "1.1.1.1",
+          "reachable": true
+        }
+      }
+    },
+    "disk": {
+      "status": "ok",
+      "reason": null,
+      "duration_ms": 3,
+      "privilege_level": "unprivileged",
+      "data": {
+        "min_free_percent": 55.0
+      }
+    },
+    "logs": {
+      "status": "ok",
+      "reason": null,
+      "duration_ms": 15,
+      "privilege_level": "unprivileged",
+      "data": {
+        "error_count": 8,
+        "entries": []
+      }
+    },
+    "smart": {
+      "status": "ok",
+      "reason": null,
+      "duration_ms": 240,
+      "privilege_level": "elevated",
+      "data": {
+        "disks": [
+          {
+            "device": "/dev/nvme0n1",
+            "health": "PASSED",
+            "attribute_source": "nvme",
+            "critical_warning": 0,
+            "temperature_c": 84,
+            "warning_temp_threshold": 83,
+            "critical_temp_threshold": 85,
+            "available_spare_percent": 100,
+            "available_spare_threshold": 5,
+            "percentage_used": 3,
+            "media_errors": 0,
+            "error_log_entries": 0,
+            "power_on_hours": 1098,
+            "power_cycles": 708,
+            "unsafe_shutdowns": 190,
+            "spare_below_threshold": false,
+            "spare_threshold_used": 5,
+            "unsafe_shutdown_ratio": 0.268,
+            "over_temperature": true,
+            "failing": false,
+            "wear_percent": 3
+          }
+        ],
+        "any_reallocated": false,
+        "max_pending_sectors": 0,
+        "max_wear_percent": 3,
+        "min_available_spare_percent": 100,
+        "any_spare_below_threshold": false,
+        "any_over_temperature": true,
+        "max_unsafe_shutdown_ratio": 0.268,
+        "max_power_on_hours": 1098
+      }
+    }
+  }
+}

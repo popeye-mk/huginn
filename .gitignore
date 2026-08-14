@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Build artifacts (companions)
+build/
+dist/
+*.iso
+
+# Runtime state — the machine's own memory, never committed
+ops-platform/data/census/
+ops-platform/data/devices/
+ops-platform/data/findings/
+ops-platform/data/backup/
+ops-platform/data/secrets/
+ops-platform/data/OWNER.json
+ops-platform/data/admin.json
+**/*.db
+
+# OS cruft
+.DS_Store
+Thumbs.db

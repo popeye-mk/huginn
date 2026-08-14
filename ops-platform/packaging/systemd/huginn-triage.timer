@@ -1,0 +1,14 @@
+[Unit]
+Description=Run Huginn triage every few hours
+
+[Timer]
+# Every 3 hours, and once ~2 minutes after boot so a freshly-started
+# machine gets an early baseline. RandomizedDelaySec spreads the load
+# so it never fires at a predictable spike.
+OnBootSec=2min
+OnUnitActiveSec=3h
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

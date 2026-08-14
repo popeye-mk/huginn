@@ -1,0 +1,22 @@
+{
+  "_comment": "REAL PowerShell output captured from a live Windows 11 Pro machine (spec \u00a719). Do not hand-edit: this is evidence, not a fixture someone invented. Regenerate with tools/capture_windows_golden.py on a real box.",
+  "_environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "powershell": "5.1.26100.6584",
+    "ui_culture": "en-GB",
+    "culture": "en-US",
+    "console_encoding": "utf-8",
+    "preferred_encoding": "cp1252",
+    "elevated": false,
+    "captured": "2026-07-20",
+    "captures": [
+      "2026-07-20 initial (4 collectors, no LastBootUpTime in query)",
+      "2026-07-20 second run (LastBootUpTime present, uptime verified)"
+    ]
+  },
+  "system": "{\"Caption\":\"Microsoft Windows 11 Pro\",\"Version\":\"10.0.26200\",\"FreePhysicalMemory\":1419552,\"TotalVisibleMemorySize\":4174256,\"LastBootUpTime\":\"/Date(1784534660500)/\"}",
+  "disk": "{\"DeviceID\":\"C:\",\"Size\":52678356992,\"FreeSpace\":21585371136,\"FileSystem\":\"NTFS\"}",
+  "network": "{\"Interface\":\"Ethernet\",\"Gateway\":\"192.168.122.1\",\"DnsServers\":[\"192.168.122.1\"],\"DnsResults\":{\"example.com\":true,\"wikipedia.org\":true,\"cloudflare.com\":true},\"GatewayReachable\":true,\"PublicReachable\":true}",
+  "logs": "{\"ErrorCount\":7,\"WindowHours\":24,\"Entries\":[{\"TimeCreated\":\"\\/Date(1784538433261)\\/\",\"Id\":20,\"LevelDisplayName\":\"Error\",\"ProviderName\":\"Microsoft-Windows-WindowsUpdateClient\",\"Message\":\"Installation Failure: Windows failed to install the following update with error 0x80073D02: 9MSSGKG348SP-MicrosoftWindows.Client.WebExperience.\"},{\"TimeCreated\":\"\\/Date(1784534638169)\\/\",\"Id\":7043,\"LevelDisplayName\":\"Error\",\"ProviderName\":\"Service Control Manager\",\"Message\":\"The Windows Update service did not shut down properly after receiving a pre-shutdown control.\"},{\"TimeCreated\":\"\\/Date(1784530717204)\\/\",\"Id\":7023,\"LevelDisplayName\":\"Error\",\"ProviderName\":\"Service Control Manager\",\"Message\":\"The Windows Search service terminated with the following error: \\r\\nA system shutdown is in progress.\"},{\"TimeCreated\":\"\\/Date(1784530679271)\\/\",\"Id\":7030,\"LevelDisplayName\":\"Error\",\"ProviderName\":\"Service Control Manager\",\"Message\":\"The Printer Extensions and Notifications service is marked as an interactive service. However, the system is configured to not allow interactive services. This service may not function properly.\"},{\"TimeCreated\":\"\\/Date(1784530676463)\\/\",\"Id\":7023,\"LevelDisplayName\":\"Error\",\"ProviderName\":\"Service Control Manager\",\"Message\":\"The Network List Service service terminated with the following error: \\r\\nThe device is not ready.\"},{\"TimeCreated\":\"\\/Date(1784530676413)\\/\",\"Id\":10010,\"LevelDisplayName\":\"Error\",\"ProviderName\":\"Microsoft-Windows-DistributedCOM\",\"Message\":\"The server {A47979D2-C419-11D9-A5B4-001185AD2B89} did not register with DCOM within the required timeout.\"},{\"TimeCreated\":\"\\/Date(1784530556382)\\/\",\"Id\":7023,\"LevelDisplayName\":\"Error\",\"ProviderName\":\"Service Control Manager\",\"Message\":\"The netprofm service terminated with the following error: \\r\\nThe device is not ready.\"}]}",
+  "_captured_at_epoch": 1784539527
+}
