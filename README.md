@@ -69,4 +69,12 @@ a false "all clear" as the worst possible outcome.
 
 ## License
 
-GNU AGPLv3 — see [`LICENSE`](LICENSE). Each project also carries its own notice.
+Huginn and both companion tools are licensed under the **GNU Affero General
+Public License v3.0 (AGPLv3)** — see [`LICENSE`](LICENSE). Each of the three
+projects also carries its own copy of the license.
+
+In plain terms: **this software is free, and it stays free.** You may use
+it, read it, change it, and share it. But if you distribute it — or run a
+modified version as a service that others reach over a network — you must
+pass the source on, under this same license. No one can take it, close the
+source, and lock people out. That is the whole point of the choice.
