@@ -140,4 +140,4 @@ outcome, in its documentation as much as its code.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+GNU AGPLv3 — see [`LICENSE`](LICENSE).

@@ -69,4 +69,4 @@ a false "all clear" as the worst possible outcome.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE). Each project also carries its own notice.
+GNU AGPLv3 — see [`LICENSE`](LICENSE). Each project also carries its own notice.
