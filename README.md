@@ -74,14 +74,34 @@ tree, nothing that phones home.
 
 ## Status and honesty
 
-Working tools, verified on real Linux and Windows machines, with
-recovery-from-backup demonstrated. Also personal-scale: run on a small
-number of networks for a short time, not a fleet for years. A couple of
-platform-specific paths (a Hyper-V console reader, a Windows file-ACL
-lockdown) are written from documentation and not yet confirmed against the
-real thing — and say so in their own comments. If something here does not
-do what the docs claim, that is a bug worth reporting: these projects treat
-a false "all clear" as the worst possible outcome.
+Working tools, verified on real **Linux, Windows, and macOS**, with
+recovery-from-backup demonstrated. The macOS run earned its keep: it found
+a real bug — the connection parser was shaped for Linux/Windows and silently
+matched zero rows of BSD `netstat` — which is now fixed and covered by tests
+built from the real output. Also personal-scale: run on a small number of
+networks for a short time, not a fleet for years. A couple of platform paths
+(a Hyper-V console reader, a Windows file-ACL lockdown, and a macOS build of
+the `netdiag` companion) are not yet confirmed against the real thing — and
+say so in their own comments. If something here does not do what the docs
+claim, that is a bug worth reporting: these projects treat a false "all
+clear" as the worst possible outcome.
+
+### Verified on macOS (real run)
+
+The smoke test on a real macOS machine, after the connection-parser fix —
+every check either passes or honestly *skips*, and nothing is faked:
+
+```
+Ops Platform smoke test — Darwin 23.6.0
+  ok    environment: platform_support resolves this OS   detected darwin
+  ok    engine: Diagnostic Companion is actually runnable
+  ok    connections: engine lists this machine's connections   20 rows -> 8 parsed
+  skip  engine: netdiag binary resolves for this OS      no macOS netdiag binary yet
+  skip  backup: sandbox kind resolves for this OS        no hypervisor on macOS
+  ...
+  12 passed, 0 failed, 4 skipped
+  Skipped checks are NOT passes — they are things this machine could not verify.
+```
 
 ## License
 

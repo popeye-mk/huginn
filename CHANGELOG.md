@@ -2,6 +2,22 @@
 
 All notable changes to Huginn are recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [Unreleased]
+
+### Fixed
+- **macOS connection parsing.** A real macOS run surfaced a bug the mocked
+  tests could not: the connection parser was shaped for Linux `ss` and
+  Windows JSON, and silently matched **zero** rows of BSD `netstat -anv`
+  (protocol `tcp4/tcp6`, `address.port` joined by a dot, state in the sixth
+  column). Added a proper `parse_macos` and a single `connection_format`
+  selector, consolidated three copies of the parser-choice into one source
+  of truth, and covered it with tests built from the real output.
+
+### Verified
+- **macOS**, on a real machine: smoke test **12 passed, 0 failed** (only the
+  honest skips remain — no macOS `netdiag` binary, no hypervisor for
+  backup-boot). Huginn is now verified on Linux, Windows **and** macOS.
+
 ## [1.0.0] — first public release
 
 The first open version of Huginn, published complete with its two companion
