@@ -12,6 +12,20 @@ decide), and it never lets "not checked" look like "all clear".
 This repository contains Huginn **and the two companion tools it uses**, so
 it is complete on clone — nothing to fetch, nothing to wire up.
 
+![The Huginn console: four status boxes answer "am I actually covered?" at a glance — last patrol, whether an alert would reach you, how many machines are watching, and what is unaccounted for.](docs/images/console.png)
+
+## What it looks like
+
+The console is a single local page — no account, no cloud. The four boxes
+across the top are the whole answer to *"is my network OK right now?"*, in
+plain traffic-light colours. Grey means **not checked** — never dressed up
+as green.
+
+| | |
+| - | - |
+| ![The alerting setup: desktop, phone push (ntfy) and email, each explained in plain language.](docs/images/setup.png) | ![An evidence snapshot showing honest coverage — several checks read "not readable — NOT an all-clear" instead of pretending everything passed.](docs/images/honest-output.png) |
+| **Set up once** — who gets told, and how loud. | **Honest output** — what it could *not* read is stated, never hidden. |
+
 ## What's in here
 
 | Folder | What it is | Language |
