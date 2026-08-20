@@ -15,6 +15,7 @@ from .detect import (
 )
 from .commands import (
     connection_command,
+    connection_format,
     connection_output_is_json,
     firewall_command,
     ipv6_ra_command,
@@ -35,7 +36,7 @@ __all__ = [
     "WINDOWS", "LINUX", "MACOS",
     "sandbox_kind", "sandbox_unsupported_reason",
     "SANDBOX_KINDS", "KVM", "HYPERV",
-    "connection_command", "connection_output_is_json",
+    "connection_command", "connection_format", "connection_output_is_json",
     "listening_ports_command", "llmnr_setting_command",
     "ipv6_ra_command", "firewall_command",
 ]

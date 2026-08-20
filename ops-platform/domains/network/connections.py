@@ -80,6 +80,82 @@ def _linux_row(parts: List[str]):
         return None
 
 
+def parse_macos(text: str) -> List[Connection]:
+    """Parse BSD `netstat -anv -p tcp` (macOS). Malformed lines are skipped.
+
+    Written from a real macOS run, because the Linux `ss` parser matched
+    ZERO of fourteen rows on it — silently, which is the worst way to be
+    wrong. Three differences from `ss`, each fatal to the Linux parser:
+
+        Proto  Recv-Q Send-Q  Local Address     Foreign Address     (state)
+        tcp4   0      0        10.0.2.15.49215   17.188.185.133.5223 ESTABLISHED
+
+      - the protocol is `tcp4`/`tcp6`, not `tcp`;
+      - the port joins the address with a DOT, not a colon
+        (`10.0.2.15.49215`, and `fe80::1.443` for IPv6);
+      - the state is the SIXTH column, and there are header lines to skip.
+    """
+    connections = []
+    for line in (text or "").splitlines():
+        parts = line.split()
+        if len(parts) < 6:
+            continue
+        proto = parts[0].lower()
+        if not (proto.startswith("tcp") or proto.startswith("udp")):
+            continue                       # skips the 'Active'/'Proto' headers
+        parsed = _macos_row(parts)
+        if parsed is not None:
+            connections.append(parsed)
+    return connections
+
+
+def _macos_row(parts: List[str]):
+    """One BSD `netstat` row: proto recvq sendq local foreign state ..."""
+    protocol = "udp" if parts[0].lower().startswith("udp") else "tcp"
+    state = parts[5]
+    if state.upper() not in [s.upper() for s in TRACKED_STATES]:
+        return None                        # LISTEN and friends are not connections
+
+    local_address, local_port = _split_bsd_endpoint(parts[3])
+    remote_address, remote_port = _split_bsd_endpoint(parts[4])
+    if not remote_address or remote_port is None:
+        return None
+
+    try:
+        return Connection(
+            protocol=protocol,
+            local_address=local_address,
+            local_port=local_port or 0,
+            remote_address=remote_address,
+            remote_port=remote_port,
+            state=_normalise_state(state),
+            # The pid is column nine when present; best-effort, never required.
+            pid=_maybe_int(parts[8]) if len(parts) > 8 else None,
+        )
+    except ValueError:
+        return None
+
+
+def _split_bsd_endpoint(text: str):
+    """Split `address.port` (BSD netstat), surviving IPv6 and wildcards.
+
+    The port is after the LAST dot: `10.0.2.15.49215` -> (10.0.2.15, 49215),
+    `fe80::1.443` -> (fe80::1, 443), `*.*` -> (*, 0), `*.8080` -> (*, 8080).
+    Splitting on the last dot is correct even for IPv6 because the address
+    half keeps its colons untouched.
+    """
+    text = (text or "").strip()
+    if "." not in text:
+        return text, None
+    address, _, port = text.rpartition(".")
+    if port == "*":
+        return address, 0
+    try:
+        return address, int(port)
+    except ValueError:
+        return address, None
+
+
 def parse_windows(payload) -> List[Connection]:
     """Parse `Get-NetTCPConnection | ConvertTo-Json` output.
 

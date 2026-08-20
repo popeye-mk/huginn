@@ -192,6 +192,25 @@ def connection_output_is_json() -> bool:
     return current_os() == WINDOWS
 
 
+def connection_format() -> str:
+    """Which parser `connection_command()` output needs: json / ss / bsd.
+
+    Three genuinely different shapes, and choosing here (not by sniffing
+    the payload) keeps a malformed response distinguishable from a foreign
+    format. macOS was missing until a real Mac run: `netstat -anv -p tcp`
+    is BSD-shaped — protocol `tcp4/tcp6`, `address.port` joined by a DOT,
+    state in the sixth column — and the Linux `ss` parser silently matched
+    zero of fourteen rows. The lesson is the reason this function exists:
+    a fall-through of "not Windows means Linux" is wrong on every BSD.
+    """
+    os_name = current_os()
+    if os_name == WINDOWS:
+        return "json"
+    if os_name == MACOS:
+        return "bsd"
+    return "ss"
+
+
 # --- host posture (H1): the PRECONDITIONS that make an attack work ---------
 #
 # Everything above reads what is happening. These read what would let it

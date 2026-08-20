@@ -17,23 +17,28 @@ than inside a router.
 from typing import Callable, List
 
 from contracts import Connection
-from domains.network.connections import parse_linux, parse_windows
+from domains.network.connections import parse_linux, parse_macos, parse_windows
 from engines.connections import ConnectionsEngine
-from platform_support import connection_output_is_json
+from platform_support import connection_format
 
 
 def observe(engine: ConnectionsEngine) -> List[Connection]:
     """List this machine's connections and parse them for this OS.
 
     Which parser to use comes from `platform_support`, never from an
-    `if windows` here: `ss` emits whitespace columns and PowerShell
-    emits JSON objects, and asking the parser to sniff which one it got
-    would make a malformed response indistinguishable from the other
-    format.
+    `if windows` here: `ss` emits whitespace columns, macOS `netstat`
+    emits BSD columns, and PowerShell emits JSON objects. Asking the
+    parser to sniff which one it got would make a malformed response
+    indistinguishable from a foreign format — and the "not JSON, so Linux"
+    fall-through this replaces silently mis-parsed every macOS row until a
+    real Mac run.
     """
     output = engine.run()
-    if connection_output_is_json():
+    fmt = connection_format()
+    if fmt == "json":
         return parse_windows(output.payload)
+    if fmt == "bsd":
+        return parse_macos(output.payload)
     return parse_linux(output.payload)
 
 

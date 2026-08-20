@@ -24,7 +24,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from contracts import Connection  # noqa: E402
-from domains.network.connections import parse_linux, parse_windows  # noqa: E402
+from domains.network.connections import (  # noqa: E402
+    parse_linux, parse_macos, parse_windows,
+)
 
 # Real `ss -tunH state connected` output shape, including the IPv6 form
 # with a bracketed address that breaks naive parsing.
@@ -213,6 +215,52 @@ def test_windows_state_spelling_is_normalised():
              "RemoteAddress": "20.190.159.4", "RemotePort": 443,
              "State": "TimeWait", "OwningProcess": 10}]
     assert parse_windows(rows)[0].state == "TIME_WAIT"
+
+
+# --- macOS: BSD netstat, captured from a real Mac run ----------------------
+#
+# The Linux `ss` parser matched ZERO of these rows — silently. This is the
+# actual output, headers and all, that exposed it.
+MACOS_NETSTAT = """Active Internet connections (including servers)
+Proto Recv-Q Send-Q  Local Address          Foreign Address        (state)      rhiwat shiwat   pid   epid
+tcp4       0      0  *.8080                 *.*                    LISTEN       131072 131072   555     0
+tcp46      0      0  *.3283                 *.*                    LISTEN       131072 131072   500     0
+tcp4       0      0  *.22                   *.*                    LISTEN       131072 131072     1     0
+tcp4       0      0  10.0.2.15.49215        17.188.185.133.5223    ESTABLISHED  131072 131400   126   126
+tcp6       0      0  fe80::1.51234          fe80::2.443            ESTABLISHED  131072 131072   200     0"""
+
+
+def test_macos_bsd_netstat_parses():
+    """The whole reason for the real-Mac run: this used to yield nothing."""
+    conns = parse_macos(MACOS_NETSTAT)
+    assert len(conns) == 2, "the two ESTABLISHED rows parse; LISTEN is skipped"
+
+
+def test_macos_dot_separated_port_is_split_correctly():
+    conns = parse_macos(MACOS_NETSTAT)
+    c = [x for x in conns if x.remote_port == 5223][0]
+    assert c.remote_address == "17.188.185.133", "address keeps its dots, port does not"
+    assert c.local_address == "10.0.2.15" and c.local_port == 49215, \
+        "the local side splits on the LAST dot too"
+
+
+def test_macos_ipv6_survives_the_dot_split():
+    """`fe80::1.443` — the address half keeps every colon, the port is the tail."""
+    conns = parse_macos(MACOS_NETSTAT)
+    v6 = [x for x in conns if x.remote_address == "fe80::2"][0]
+    assert v6.remote_port == 443 and v6.local_address == "fe80::1", \
+        "IPv6 addresses are not shredded by the dot split"
+
+
+def test_macos_tcp4_and_tcp6_both_become_tcp():
+    for c in parse_macos(MACOS_NETSTAT):
+        assert c.protocol == "tcp", "tcp4/tcp6 normalise to tcp"
+
+
+def test_macos_headers_and_garbage_are_skipped_not_fatal():
+    assert parse_macos("Active Internet connections\nProto Recv-Q\n") == [], \
+        "header-only output is empty, never an error"
+    assert parse_macos("") == [], "empty input is empty, not a crash"
 
 
 if __name__ == "__main__":
