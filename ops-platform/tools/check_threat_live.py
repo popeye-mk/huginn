@@ -20,20 +20,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from domains.network.connections import parse_linux, parse_windows  # noqa: E402
+from agents.observing import observe  # noqa: E402
 from domains.threat import ThreatService  # noqa: E402
 from engines.connections import ConnectionsEngine  # noqa: E402
-from platform_support import connection_output_is_json, hostname  # noqa: E402
+from platform_support import hostname  # noqa: E402
 from storage.threat_feed import load_feeds  # noqa: E402
 
 
 def _connections():
-    """Observe what this machine is talking to, right now."""
-    engine = ConnectionsEngine()
-    output = engine.run()
-    if connection_output_is_json():
-        return parse_windows(output.payload)
-    return parse_linux(output.payload)
+    """Observe what this machine is talking to, right now.
+
+    Delegates to `agents.observing.observe` rather than choosing the parser
+    itself — that choice used to be copied here, and the copy silently
+    mis-parsed macOS after the real one was fixed. One source of truth now.
+    """
+    return observe(ConnectionsEngine())
 
 
 def _print_feeds(feeds) -> None:

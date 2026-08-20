@@ -31,22 +31,29 @@ def _observe_connections() -> str:
     where `ss` returned TIME-WAIT rows the parser was discarding, before
     the Windows disc was even built.
     """
-    from domains.network.connections import parse_linux, parse_windows
+    from domains.network.connections import (
+        parse_linux, parse_macos, parse_windows,
+    )
     from engines.connections import ConnectionsEngine
-    from platform_support import connection_output_is_json
+    from platform_support import connection_format
 
     engine = ConnectionsEngine()
     if not engine.is_available():
         raise RuntimeError("the connection listing tool did not run")
 
     output = engine.run()
-    if connection_output_is_json():
+    # The parser choice MUST come from the same source the product uses
+    # (`connection_format`), or this check drifts from reality. It did: this
+    # branch used to be "not JSON, so Linux", which mis-parsed every macOS
+    # row while the product's own path had already been taught the BSD form.
+    fmt = connection_format()
+    if fmt == "json":
         payload = output.payload
         rows = len(payload) if isinstance(payload, list) else (1 if payload else 0)
         parsed = parse_windows(payload)
     else:
         rows = len([ln for ln in (output.payload or "").splitlines() if ln.strip()])
-        parsed = parse_linux(output.payload)
+        parsed = parse_macos(output.payload) if fmt == "bsd" else parse_linux(output.payload)
 
     if rows and not parsed:
         raise RuntimeError(
