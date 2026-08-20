@@ -1,0 +1,40 @@
+name: tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Huginn itself has NO dependencies. These two are OPTIONAL tools its
+      # tests cross-check against; installing them means nothing has to skip,
+      # so a green run here is a full run, not a partial one.
+      - name: Install optional check dependencies
+        run: python -m pip install --upgrade pip pyyaml numpy
+
+      - name: Architecture rules
+        working-directory: ops-platform
+        run: python3 tools/test_architecture.py
+
+      - name: Full test suite
+        working-directory: ops-platform
+        env:
+          # Point the data-ownership guard at a scratch file, or the suite
+          # would claim the checkout's data directory for the CI runner.
+          HUGINN_OWNER_FILE: /tmp/huginn-owner.json
+        run: |
+          fail=0
+          for f in tools/test_*.py; do
+            echo "== $f =="
+            python3 "$f" || fail=1
+          done
+          exit $fail

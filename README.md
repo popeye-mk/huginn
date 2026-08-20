@@ -1,5 +1,8 @@
 # Huginn
 
+[![tests](https://github.com/popeye-mk/huginn/actions/workflows/tests.yml/badge.svg)](https://github.com/popeye-mk/huginn/actions/workflows/tests.yml)
+[![license: AGPL v3](https://img.shields.io/badge/license-AGPLv3-blue.svg)](LICENSE)
+
 **A network watchdog built around one unusual idea: radical honesty about
 what it did and did not check.**
 
@@ -92,3 +95,9 @@ it, read it, change it, and share it. But if you distribute it — or run a
 modified version as a service that others reach over a network — you must
 pass the source on, under this same license. No one can take it, close the
 source, and lock people out. That is the whole point of the choice.
+
+## Contributing & changes
+
+Contributions are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md) for the
+one rule everything here is built on. Release notes live in
+[`CHANGELOG.md`](CHANGELOG.md).
