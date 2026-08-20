@@ -1,6 +1,5 @@
 # Huginn
 
-[![tests](https://github.com/popeye-mk/huginn/actions/workflows/tests.yml/badge.svg)](https://github.com/popeye-mk/huginn/actions/workflows/tests.yml)
 [![license: AGPL v3](https://img.shields.io/badge/license-AGPLv3-blue.svg)](LICENSE)
 
 **A network watchdog built around one unusual idea: radical honesty about
